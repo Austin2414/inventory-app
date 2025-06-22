@@ -26,18 +26,24 @@ export interface Inventory {
   locations: Location;
 }
 
-// Packing Slip Item type
-export interface PackingSlipItem {
-  id: number;
-  packing_slip_id: number;
-  material_id: number;
-  gross_weight: number;
-  tare_weight: number;
-    net_weight: number; // ADD THIS LINE
-
+// Packing Slip Form Item type (for form data)
+export interface PackingSlipFormItem {
+  material_id: string;  // string for form input
+  gross_weight: string; // string for form input
+  tare_weight: string;  // string for form input
   remarks?: string;
   ticket_number?: string;
-  materials?: Material;
+}
+
+// Packing Slip Item type (for API responses)
+export interface PackingSlipItem {
+  id: number;           // Added id field
+  material_id: number;  // number from database
+  gross_weight: number; // number from database
+  tare_weight: number;  // number from database
+  net_weight?: number;  // optional calculated field
+  remarks?: string;
+  ticket_number?: string;
 }
 
 // Packing Slip type
@@ -45,30 +51,24 @@ export interface PackingSlip {
   id: number;
   slip_type: string;
   status: string;
+  created_at: Date; 
+  packing_slip_items: PackingSlipItem[];
   from_name?: string;
   to_name?: string;
-  date_time: string;
   truck_number?: string;
   trailer_number?: string;
   po_number?: string;
   seal_number?: string;
-  location_id: number;
-  packing_slip_items: PackingSlipItem[];
-  locations?: Location;
+  location_id?: number;
+  user_id?: number;
 }
 
 // Form data types
 export interface PackingSlipFormData {
   slip_type: string;
   location_id: string;
-  items: {
-    material_id: string;
-    gross_weight: string;
-    tare_weight: string;
-    net_weight: number;
-    remarks?: string;
-    ticket_number?: string;
-  }[];
+  status: string;
+  items: PackingSlipFormItem[]; // Use FormItem here
 }
 
 export interface ReclassifyFormData {

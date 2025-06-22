@@ -1,40 +1,47 @@
-// src/components/PackingSlips/PackingSlipForm.tsx
 import React, { useState, useEffect } from 'react';
-import { createPackingSlip } from '../../services/api';
-import { Location, Material } from '../../types';
+import { 
+  Location, 
+  Material, 
+  PackingSlipFormData, 
+  PackingSlipFormItem,
+  PackingSlip
+} from '../../types';
 
-interface PackingSlipItem {
-  material_id: string;
-  gross_weight: string;
-  tare_weight: string;
-  remarks?: string;
-  ticket_number?: string;
-}
-
-type PackingSlipFormProps = {
+interface PackingSlipFormProps {
   id?: number;
   onSave: () => void;
   onEditDraft?: (id: number) => void;
-};
+  onSubmit: (formData: PackingSlipFormData) => void;
+  isSubmitting: boolean;
+  error?: string | null;
+  success?: boolean;
+  editData?: PackingSlip | null; // Add this prop for editing
+}
 
-const PackingSlipForm = ({ id, onSave, onEditDraft }: PackingSlipFormProps) => {
+const PackingSlipForm: React.FC<PackingSlipFormProps> = ({ 
+  onSubmit, 
+  onSave, 
+  onEditDraft,
+  isSubmitting,
+  error,
+  success,
+  editData // Add this prop
+}) => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [formData, setFormData] = useState({
+  
+  // Initialize form data based on edit mode
+  const [formData, setFormData] = useState<PackingSlipFormData>({
     slip_type: 'outbound',
     location_id: '',
     status: 'draft',
-    items: [{ material_id: '', gross_weight: '', tare_weight: '' }] as PackingSlipItem[]
+    items: [{ material_id: '', gross_weight: '', tare_weight: '' }]
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
-  // Fetch locations and materials on component mount
+  // Fetch locations and materials
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // In a real app, you'd use your API service here
         const locResponse = await fetch('http://localhost:3001/locations');
         const locData = await locResponse.json();
         setLocations(locData);
@@ -44,12 +51,29 @@ const PackingSlipForm = ({ id, onSave, onEditDraft }: PackingSlipFormProps) => {
         setMaterials(matData);
       } catch (error) {
         console.error('Error fetching data:', error);
-        setError('Failed to load required data');
       }
     };
     
     fetchData();
   }, []);
+
+  // Handle edit data when component mounts or editData changes
+  useEffect(() => {
+    if (editData) {
+      setFormData({
+        slip_type: editData.slip_type,
+        location_id: String(editData.location_id),
+        status: editData.status,
+        items: editData.packing_slip_items.map(item => ({
+          material_id: String(item.material_id),
+          gross_weight: String(item.gross_weight),
+          tare_weight: String(item.tare_weight),
+          remarks: item.remarks || '',
+          ticket_number: item.ticket_number || ''
+        }))
+      });
+    }
+  }, [editData]);
 
   const handleAddItem = () => {
     setFormData({
@@ -60,81 +84,31 @@ const PackingSlipForm = ({ id, onSave, onEditDraft }: PackingSlipFormProps) => {
 
   const handleRemoveItem = (index: number) => {
     if (formData.items.length <= 1) return;
-    
     const newItems = [...formData.items];
     newItems.splice(index, 1);
-    
-    setFormData({
-      ...formData,
-      items: newItems
-    });
+    setFormData({ ...formData, items: newItems });
   };
 
-  const handleItemChange = (index: number, field: string, value: string) => {
+  const handleItemChange = (index: number, field: keyof PackingSlipFormItem, value: string) => {
     const newItems = [...formData.items];
     newItems[index] = { ...newItems[index], [field]: value };
     setFormData({ ...formData, items: newItems });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
-    setSuccess(false);
-    
-    try {
-      await createPackingSlip({
-        ...formData,
-        items: formData.items.map(item => ({
-          ...item,
-          material_id: parseInt(item.material_id),
-          gross_weight: parseFloat(item.gross_weight),
-          tare_weight: parseFloat(item.tare_weight)
-        }))
-      });
-      
-      setSuccess(true);
-      // Reset form after successful submission
-      setFormData({
-        slip_type: 'outbound',
-        location_id: '',
-        status: 'draft',
-        items: [{ material_id: '', gross_weight: '', tare_weight: '' }]
-      });
-    } catch (error) {
-      // Handle TypeScript's 'unknown' type
-      let errorMessage = 'Failed to create packing slip. Please try again.';
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      }
-      
-      console.error('Error creating packing slip:', error);
-      setError(errorMessage);
-    } finally {
-      setIsSubmitting(false);
-    }
+    console.log("[FRONTEND] Form data submitted:", formData);
+    onSubmit(formData);
   };
 
   return (
     <div className="card mt-4">
       <div className="card-header bg-info text-white">
-        <h2 className="mb-0">Create Packing Slip</h2>
+        <h2 className="mb-0">{editData ? 'Edit Packing Slip' : 'Create Packing Slip'}</h2>
       </div>
       <div className="card-body">
-        {success && (
-          <div className="alert alert-success">
-            Packing slip created successfully!
-          </div>
-        )}
-        
-        {error && (
-          <div className="alert alert-danger">
-            {error}
-          </div>
-        )}
+        {success && <div className="alert alert-success">Packing slip {editData ? 'updated' : 'created'} successfully!</div>}
+        {error && <div className="alert alert-danger">{error}</div>}
         
         <form onSubmit={handleSubmit}>
           <div className="row mb-3">
@@ -144,6 +118,7 @@ const PackingSlipForm = ({ id, onSave, onEditDraft }: PackingSlipFormProps) => {
                 className="form-select"
                 value={formData.slip_type} 
                 onChange={e => setFormData({...formData, slip_type: e.target.value})}
+                disabled={editData?.status === 'completed'} // Disable if completed
               >
                 <option value="outbound">Outbound</option>
                 <option value="inbound">Inbound</option>
@@ -170,10 +145,11 @@ const PackingSlipForm = ({ id, onSave, onEditDraft }: PackingSlipFormProps) => {
               value={formData.location_id}
               onChange={e => setFormData({...formData, location_id: e.target.value})}
               required
+              disabled={editData?.status === 'completed'} // Disable if completed
             >
               <option value="">Select Location</option>
               {locations.map(location => (
-                <option key={location.id} value={location.id}>
+                <option key={location.id} value={String(location.id)}>
                   {location.name} {location.address ? `(${location.address})` : ''}
                 </option>
               ))}
@@ -202,10 +178,11 @@ const PackingSlipForm = ({ id, onSave, onEditDraft }: PackingSlipFormProps) => {
                         value={item.material_id}
                         onChange={e => handleItemChange(index, 'material_id', e.target.value)}
                         required
+                        disabled={editData?.status === 'completed'} // Disable if completed
                       >
                         <option value="">Select Material</option>
                         {materials.map(material => (
-                          <option key={material.id} value={material.id}>
+                          <option key={material.id} value={String(material.id)}>
                             {material.name} ({material.category})
                           </option>
                         ))}
@@ -220,6 +197,7 @@ const PackingSlipForm = ({ id, onSave, onEditDraft }: PackingSlipFormProps) => {
                         step="0.01"
                         min="0"
                         required
+                        disabled={editData?.status === 'completed'} // Disable if completed
                       />
                     </td>
                     <td>
@@ -231,24 +209,27 @@ const PackingSlipForm = ({ id, onSave, onEditDraft }: PackingSlipFormProps) => {
                         step="0.01"
                         min="0"
                         required
+                        disabled={editData?.status === 'completed'} // Disable if completed
                       />
                     </td>
                     <td className="align-middle">
                       {item.gross_weight && item.tare_weight ? 
-                        (parseFloat(item.gross_weight) - parseFloat(item.tare_weight)).toFixed(2) : 
+                        (Number(item.gross_weight) - Number(item.tare_weight)).toFixed(2) : 
                         '0.00'
                       }
                     </td>
                     <td className="align-middle">
-                      <button 
-                        type="button" 
-                        className="btn btn-sm btn-danger"
-                        onClick={() => handleRemoveItem(index)}
-                        disabled={formData.items.length <= 1}
-                        title="Remove item"
-                      >
-                        ×
-                      </button>
+                      {formData.items.length > 1 && (
+                        <button 
+                          type="button" 
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleRemoveItem(index)}
+                          disabled={editData?.status === 'completed'} // Disable if completed
+                          title="Remove item"
+                        >
+                          ×
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -261,6 +242,7 @@ const PackingSlipForm = ({ id, onSave, onEditDraft }: PackingSlipFormProps) => {
               type="button" 
               className="btn btn-sm btn-outline-secondary"
               onClick={handleAddItem}
+              disabled={editData?.status === 'completed'} // Disable if completed
             >
               + Add Item
             </button>
@@ -268,9 +250,11 @@ const PackingSlipForm = ({ id, onSave, onEditDraft }: PackingSlipFormProps) => {
             <button 
               type="submit" 
               className="btn btn-primary"
-              disabled={isSubmitting}
+              disabled={isSubmitting || editData?.status === 'completed'} // Disable if completed
             >
-              {isSubmitting ? 'Creating...' : 'Create Packing Slip'}
+              {isSubmitting 
+                ? (editData ? 'Updating...' : 'Creating...') 
+                : (editData ? 'Update Packing Slip' : 'Create Packing Slip')}
             </button>
           </div>
         </form>
@@ -280,4 +264,3 @@ const PackingSlipForm = ({ id, onSave, onEditDraft }: PackingSlipFormProps) => {
 };
 
 export default PackingSlipForm;
-export {};
