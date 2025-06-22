@@ -7,6 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id            Int              @id @default(autoincrement())
+  username      String           @unique
+  email         String           @unique
+  password      String
+  }
+
 model locations {
   id      Int     @id @default(autoincrement())
   name    String
@@ -64,6 +71,7 @@ model packing_slip_items {
   material_id     Int
   gross_weight    Float
   tare_weight     Float
+  // net_weight      Float?
   remarks         String?
   ticket_number   String?
   

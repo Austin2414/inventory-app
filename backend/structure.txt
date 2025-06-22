@@ -1,0 +1,16 @@
+.
+./src
+./src/index.ts
+./src/types.ts
+./prisma
+./prisma/schema.prisma
+./prisma/migrations
+./prisma/migrations/migration_lock.toml
+./prisma/migrations/20250618184829_init
+./prisma/migrations/20250618184829_init/migration.sql
+./structure.txt
+./package.json
+./tsconfig.json
+./.gitignore
+./.env
+./package-lock.json

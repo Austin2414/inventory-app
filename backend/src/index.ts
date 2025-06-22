@@ -11,6 +11,11 @@ const prisma = new PrismaClient({
     }
   }
 });const PORT = 3001;
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
 app.use(cors());
 
 
@@ -236,6 +241,25 @@ function getErrorMessage(error: unknown): string {
   return String(error);
 }
 
+// backend/src/index.ts
+app.get('/packing-slips', async (req, res) => {
+  try {
+    const packingSlips = await prisma.packing_slips.findMany({
+      include: {
+        packing_slip_items: true
+      },
+      orderBy: {
+        id: 'desc'
+      }
+    });
+    
+    res.json(packingSlips);
+  } catch (error) {
+    console.error('Error fetching packing slips:', error);
+    res.status(500).json({ error: 'Failed to fetch packing slips' });
+  }
+});
+
 // Get packing slips by status
 app.get('/packing-slips/:status', handle(async (req, res) => {
   try {
@@ -330,12 +354,15 @@ app.delete('/packing-slips/:id', handle(async (req, res) => {
   }
 }));
 
-app.post('/packing-slips', handle(async (req, res) => {
+app.post('/packing-slips', async (req, res) => {
   try {
+    console.log("Received packing slip creation request");
+    
+    // Destructure directly from req.body
     const { 
       slip_type, 
       location_id,
-      items,
+      items = [],
       status = "draft",
       from_name,
       to_name,
@@ -344,30 +371,29 @@ app.post('/packing-slips', handle(async (req, res) => {
       po_number,
       seal_number
     } = req.body;
-    
+
     // Validate required fields
-    if (!slip_type || !location_id || !items) {
+    if (!slip_type || !location_id) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // Create packing slip
+    // Create packing slip without user reference
     const newSlip = await prisma.packing_slips.create({
       data: {
         slip_type,
         status,
         location_id: parseInt(location_id),
-        from_name,
-        to_name,
-        truck_number,
-        trailer_number,
-        po_number,
-        seal_number,
+        from_name: from_name || null,
+        to_name: to_name || null,
+        truck_number: truck_number || null,
+        trailer_number: trailer_number || null,
+        po_number: po_number || null,
+        seal_number: seal_number || null,
         packing_slip_items: {
           create: items.map((item) => ({
-            material_id: parseInt(item.material_id.toString()),
-            gross_weight: parseFloat(item.gross_weight.toString()),
-            tare_weight: parseFloat(item.tare_weight.toString()),
-            net_weight: parseFloat(item.gross_weight.toString()) - parseFloat(item.tare_weight.toString()),
+            material_id: parseInt(item.material_id),
+            gross_weight: parseFloat(item.gross_weight),
+            tare_weight: parseFloat(item.tare_weight),
             remarks: item.remarks || "",
             ticket_number: item.ticket_number || ""
           }))
@@ -378,41 +404,17 @@ app.post('/packing-slips', handle(async (req, res) => {
       }
     });
 
-    // Adjust inventory
-    for (const item of items) {
-      const materialId = parseInt(item.material_id.toString());
-      const locationId = parseInt(location_id.toString());
-      const netWeight = parseFloat(item.gross_weight.toString()) - 
-                        parseFloat(item.tare_weight.toString());
-      const quantityChange = slip_type === "outbound" ? -netWeight : netWeight;
-
-      await prisma.inventory.upsert({
-        where: {
-          uniq_material_location: {
-            material_id: materialId,
-            location_id: locationId
-          }
-        },
-        update: { quantity: { increment: quantityChange } },
-        create: {
-          material_id: materialId,
-          location_id: locationId,
-          quantity: quantityChange
-        }
-      });
-    }
-    
+    console.log("Packing slip created successfully:", newSlip);
     res.status(201).json(newSlip);
   } catch (error) {
-    const message = getErrorMessage(error);
-    console.error('Error creating packing slip:', message);
+ 
+   console.error('Error creating packing slip:', error);
     res.status(500).json({ 
       error: "Failed to create packing slip",
-      details: message 
+      details: error.message 
     });
   }
-}));
-
+});
 // Start server
 prisma.$connect()
   .then(() => {
