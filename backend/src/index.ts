@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import cors from 'cors'; // Add CORS support
+import cors from 'cors';
 
 const app = express();
 const prisma = new PrismaClient({
@@ -10,55 +10,75 @@ const prisma = new PrismaClient({
       url: process.env.DATABASE_URL
     }
   }
-});const PORT = 3001;
+});
+
+const PORT = 3001;
+
+// Middleware
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
 });
 
-app.use(cors());
-
-
-// 1. Define a flexible handler type
-type Handler = (req: express.Request, res: express.Response) => Promise<unknown>;
-
-// 2. Create a wrapper function to bypass strict typing
-const handle = (fn: Handler) => fn as express.RequestHandler;
-
 app.use(cors({
-  origin: 'http://localhost:3000', // Allow your frontend
+  origin: 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type']
-}));app.use(express.json());
+}));
 
-app.get('/db-check', async (req, res) => {
-  try {
-    // Test connection
-    await prisma.$queryRaw`SELECT 1`;
-    
-    // Test write and read
-    const testRecord = await prisma.locations.create({
-      data: { name: `Test Location ${Date.now()}` }
-    });
-    
-    const readRecord = await prisma.locations.findUnique({
-      where: { id: testRecord.id }
-    });
-    
-    res.json({
-      connection: "success",
-      writeReadTest: readRecord ? "success" : "failed",
-      testId: testRecord.id
-    });
-  } catch (error) {
-    res.status(500).json({
-      error: "Database check failed",
-      details: error.message
+app.use(express.json());
+
+interface PackingSlip {
+  slip_type: string;
+  location_id: number;
+  packing_slip_items: {
+    material_id: number;
+    gross_weight: number;
+    tare_weight: number;
+  }[];
+}
+
+
+// Fixed updateInventory function (resolved Prisma schema mismatch)
+async function updateInventory(slip: PackingSlip) {
+  const isOutbound = slip.slip_type === 'outbound';
+  
+  for (const item of slip.packing_slip_items) {
+    const netWeight = item.gross_weight - item.tare_weight;
+    const quantityChange = isOutbound ? -netWeight : netWeight;
+
+    // FIXED: Use correct composite ID field name
+    await prisma.inventory.upsert({
+      where: {
+        uniq_material_location: {
+          material_id: item.material_id,
+          location_id: slip.location_id
+        }
+      },
+      update: { quantity: { increment: quantityChange } },
+      create: {
+        material_id: item.material_id,
+        location_id: slip.location_id,
+        quantity: quantityChange
+      }
     });
   }
-});
+}
 
-// Test endpoint
+// Utility function
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
+// Type-safe handler
+type Handler = (req: express.Request, res: express.Response) => Promise<unknown>;
+const handle = (fn: Handler) => fn as express.RequestHandler;
+
+
+// Routes
 app.get('/', handle(async (req, res) => {
   res.send('Backend is working!');
 }));
@@ -118,42 +138,6 @@ app.post('/materials', handle(async (req, res) => {
     });
   }
 }));
-
-app.get('/db-status', async (req, res) => {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    res.json({ status: "connected" });
-  } catch (error) {
-    res.status(500).json({ status: "disconnected", error: error.message });
-  }
-});
-
-app.get('/test-write', async (req, res) => {
-  try {
-    // Create test material
-    const material = await prisma.materials.create({
-      data: { 
-        name: `Test Material ${Date.now()}`, 
-        category: "Test" 
-      }
-    });
-    
-    // Create test location
-    const location = await prisma.locations.create({
-      data: { 
-        name: `Test Location ${Date.now()}`, 
-        address: "Test Address" 
-      }
-    });
-    
-    res.json({ material, location });
-  } catch (error) {
-    res.status(500).json({ 
-      error: "Test write failed",
-      details: error.message
-    });
-  }
-});
 
 // Inventory endpoints
 app.get('/inventory', handle(async (req, res) => {
@@ -233,16 +217,8 @@ app.put('/inventory/:materialId/:locationId', handle(async (req, res) => {
   }
 }));
 
-// Add this utility function to safely handle errors
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-}
-
-// backend/src/index.ts
-app.get('/packing-slips', async (req, res) => {
+// Packing slips endpoints
+app.get('/packing-slips', handle(async (req, res) => {
   try {
     const packingSlips = await prisma.packing_slips.findMany({
       include: {
@@ -258,14 +234,13 @@ app.get('/packing-slips', async (req, res) => {
     console.error('Error fetching packing slips:', error);
     res.status(500).json({ error: 'Failed to fetch packing slips' });
   }
-});
+}));
 
-// Get packing slips by status
 app.get('/packing-slips/:status', handle(async (req, res) => {
   try {
     const { status } = req.params;
     const slips = await prisma.packing_slips.findMany({
-      where: { status }, // ACTUALLY USE THE STATUS PARAMETER HERE
+      where: { status },
       include: { 
         packing_slip_items: {
           include: {
@@ -284,6 +259,35 @@ app.get('/packing-slips/:status', handle(async (req, res) => {
     });
   }
 }));
+
+// FIXED: Corrected try/catch block structure
+app.get('/packing-slips/:id', handle(async (req, res) => {
+  try {
+    const slip = await prisma.packing_slips.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: { 
+        packing_slip_items: {
+          include: {
+            materials: true  // Include material details
+          }
+        },
+        locations: true  // Include location details
+      }
+    });
+    
+    if (!slip) {
+      return res.status(404).json({ error: "Packing slip not found" });
+    }
+    
+    res.json(slip);
+  } catch (error) {
+    const errorMessage = getErrorMessage(error);
+    console.error('Error fetching packing slip:', errorMessage);
+    res.status(500).json({ error: 'Failed to fetch packing slip' });
+  }
+}));
+
+
 
 app.get('/packing-slips/all', handle(async (req, res) => {
   try {
@@ -307,18 +311,56 @@ app.get('/packing-slips/all', handle(async (req, res) => {
   }
 }));
 
-// Update packing slip
-app.put('/packing-slips/:id', handle(async (req, res) => {
+// Combine both update operations into one endpoint
+app.patch('/packing-slips/:id', handle(async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Invalid packing slip ID" });
+    }
+
+    // Check if this is a status-only update
+    const isStatusUpdate = Object.keys(req.body).length === 1 && req.body.status;
+
+    // Fetch current slip
+    const currentSlip = await prisma.packing_slips.findUnique({
+      where: { id },
+      include: { packing_slip_items: true }
+    });
+
+    if (!currentSlip) return res.status(404).json({ error: "Packing slip not found" });
+
+    // Prepare update data
+    const updateData = isStatusUpdate 
+      ? { status: req.body.status }
+      : {
+          from_name: req.body.from_name,
+          to_name: req.body.to_name,
+          truck_number: req.body.truck_number,
+          trailer_number: req.body.trailer_number,
+          po_number: req.body.po_number,
+          seal_number: req.body.seal_number
+        };
+
+    // Update slip
     const updatedSlip = await prisma.packing_slips.update({
       where: { id },
-      data: req.body,
-      include: {
+      data: updateData,
+      include: { 
         packing_slip_items: true,
         locations: true
       }
     });
+
+    // Handle inventory updates for status changes
+    if (isStatusUpdate) {
+      if (currentSlip.status !== 'completed' && req.body.status === 'completed') {
+        await updateInventory(updatedSlip);
+      } else if (currentSlip.status === 'completed' && req.body.status !== 'completed') {
+        await reverseInventory(currentSlip);
+      }
+    }
+
     res.json(updatedSlip);
   } catch (error) {
     const message = getErrorMessage(error);
@@ -329,17 +371,34 @@ app.put('/packing-slips/:id', handle(async (req, res) => {
   }
 }));
 
-// Delete packing slip
+// Add this inventory reversal function
+async function reverseInventory(slip: PackingSlip) {
+  const isOutbound = slip.slip_type === 'outbound';
+  
+  for (const item of slip.packing_slip_items) {
+    const netWeight = item.gross_weight - item.tare_weight;
+    const quantityChange = isOutbound ? netWeight : -netWeight; // Reverse original change
+
+    await prisma.inventory.update({
+      where: {
+        uniq_material_location: {
+          material_id: item.material_id,
+          location_id: slip.location_id
+        }
+      },
+      data: { quantity: { increment: quantityChange } }
+    });
+  }
+}
+
 app.delete('/packing-slips/:id', handle(async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     
-    // First delete associated items
     await prisma.packing_slip_items.deleteMany({
       where: { packing_slip_id: id }
     });
     
-    // Then delete the slip
     await prisma.packing_slips.delete({
       where: { id }
     });
@@ -354,11 +413,11 @@ app.delete('/packing-slips/:id', handle(async (req, res) => {
   }
 }));
 
-app.post('/packing-slips', async (req, res) => {
+// FIXED: Scoping issue with newSlip variable
+app.post('/packing-slips', handle(async (req, res) => {
   try {
     console.log("Received packing slip creation request");
-    
-    // Destructure directly from req.body
+
     const { 
       slip_type, 
       location_id,
@@ -372,12 +431,8 @@ app.post('/packing-slips', async (req, res) => {
       seal_number
     } = req.body;
 
-    // Validate required fields
-    if (!slip_type || !location_id) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
+    console.log("Creating slip with:", { slip_type, location_id, items });
 
-    // Create packing slip without user reference
     const newSlip = await prisma.packing_slips.create({
       data: {
         slip_type,
@@ -397,6 +452,8 @@ app.post('/packing-slips', async (req, res) => {
             remarks: item.remarks || "",
             ticket_number: item.ticket_number || ""
           }))
+
+      
         }
       },
       include: { 
@@ -405,21 +462,28 @@ app.post('/packing-slips', async (req, res) => {
     });
 
     console.log("Packing slip created successfully:", newSlip);
+
+    // Moved inside try block to fix scoping issue
+    if (newSlip.status === 'completed') {
+      await updateInventory(newSlip);
+    }
+
     res.status(201).json(newSlip);
   } catch (error) {
- 
-   console.error('Error creating packing slip:', error);
+    const message = getErrorMessage(error);
+    console.error('Error creating packing slip:', message);
     res.status(500).json({ 
       error: "Failed to create packing slip",
-      details: error.message 
+      details: message 
     });
   }
-});
-// Start server
+}));
+
+// Server startup
 prisma.$connect()
   .then(() => {
     console.log('✅ Database connected');
-    // Test connection immediately
+    
     prisma.$queryRaw`SELECT 1`
       .then(() => console.log('✅ Database connection verified'))
       .catch(e => console.error('❌ Database verification failed:', e));

@@ -38,11 +38,8 @@ const PackingSlipList: React.FC<PackingSlipListProps> = ({ slips, onView, onEdit
                 ).toFixed(2)}
               </td>
               <td>
-                <button className="btn btn-info me-2" onClick={() => onView(slip.id)}>
-                  View
-                </button>
                 <button className="btn btn-warning" onClick={() => onEdit(slip.id)}>
-                  Edit
+                  View/Edit
                 </button>
               </td>
             </tr>

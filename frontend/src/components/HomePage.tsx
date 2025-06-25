@@ -26,6 +26,7 @@ const HomePage = () => {
               <h5 className="card-title">Packing Slips</h5>
               <p className="card-text">Create new packing slips</p>
               <Link to="/packing-slips" className="btn btn-info">
+                Packing Slips
               </Link>
             </div>
           </div>
@@ -35,21 +36,9 @@ const HomePage = () => {
           <div className="card h-100">
             <div className="card-body text-center">
               <h5 className="card-title">Reclassify</h5>
-              <p className="card-text">Move inventory between locations</p>
+              <p className="card-text">Reclassify material for weight adjustments</p>
               <Link to="/reclassify" className="btn btn-warning">
                 Reclassify Inventory
-              </Link>
-            </div>
-          </div>
-        </div>
-        
-        <div className="col-md-4 mb-4">
-          <div className="card h-100">
-            <div className="card-body text-center">
-              <h5 className="card-title">Locations</h5>
-              <p className="card-text">Manage warehouse locations</p>
-              <Link to="/locations" className="btn btn-secondary">
-                View Locations
               </Link>
             </div>
           </div>

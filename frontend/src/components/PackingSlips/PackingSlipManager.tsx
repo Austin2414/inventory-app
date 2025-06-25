@@ -3,7 +3,7 @@ import PackingSlipForm from './PackingSlipForm';
 import PackingSlipList from './PackingSlipList';
 import PackingSlipView from './PackingSlipView';
 import { PackingSlipFormData, PackingSlip } from '../../types';
-import axios from 'axios';
+import { createPackingSlip } from '../../services/api';
 
 const PackingSlipManager: React.FC = () => {
   const [view, setView] = useState<'form' | 'list' | 'view'>('form');
@@ -16,11 +16,23 @@ const PackingSlipManager: React.FC = () => {
   // Define showForm state based on view
   const showForm = view === 'form';
 
+  const [slipData, setSlipData] = useState({
+    slip_type: 'inbound',
+    location_id: 0,
+    items: [] as Array<{
+      material_id: number;
+      gross_weight: number;
+      tare_weight: number;
+    }>,
+    // ... other fields
+  });
+
+
   // Fetch packing slips
   useEffect(() => {
     const fetchPackingSlips = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/packing-slips');
+        const response = await createPackingSlip(slipData);
         setPackingSlips(response.data);
       } catch (error) {
         console.error('Failed to fetch packing slips', error);
@@ -60,7 +72,7 @@ const PackingSlipManager: React.FC = () => {
         }))
       };
 
-      const response = await axios.post('/packing-slips', payload);
+      const response = await createPackingSlip(payload);
       console.log("[MANAGER] Response received:", response.data);
       
       // Handle success
@@ -70,7 +82,7 @@ const PackingSlipManager: React.FC = () => {
       
     } catch (error) {
       let errorMessage = "Failed to create packing slip";
-      if (axios.isAxiosError(error)) {
+      if (createPackingSlip(error)) {
         errorMessage = error.response?.data?.error || error.message;
       } else if (error instanceof Error) {
         errorMessage = error.message;
