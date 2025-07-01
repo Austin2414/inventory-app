@@ -12,6 +12,7 @@ import LocationForm from './components/Locations/LocationForm';
 import MaterialForm from './components/Materials/MaterialForm';
 import HomePage from './components/HomePage';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import PackingSlipView from './components/PackingSlips/PackingSlipView';
 
 function App() {
   return (

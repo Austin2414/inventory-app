@@ -1,152 +1,121 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // Add this
+import { getPackingSlips } from '../../services/api';
 import PackingSlipForm from './PackingSlipForm';
-import PackingSlipList from './PackingSlipList';
 import PackingSlipView from './PackingSlipView';
-import { PackingSlipFormData, PackingSlip } from '../../types';
-import { createPackingSlip } from '../../services/api';
+import PackingSlipList from './PackingSlipList';
+import { PackingSlip } from '../../types';
 
 const PackingSlipManager: React.FC = () => {
-  const [view, setView] = useState<'form' | 'list' | 'view'>('form');
-  const [selectedSlipId, setSelectedSlipId] = useState<number | null>(null);
+  const navigate = useNavigate(); // Add this
+  const [view, setView] = useState<'list' | 'form' | 'view'>('list');
   const [packingSlips, setPackingSlips] = useState<PackingSlip[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [success, setSuccess] = useState<boolean>(false);
+  const [selectedSlipId, setSelectedSlipId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Define showForm state based on view
-  const showForm = view === 'form';
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [slipData, setSlipData] = useState({
-    slip_type: 'inbound',
-    location_id: 0,
-    items: [] as Array<{
-      material_id: number;
-      gross_weight: number;
-      tare_weight: number;
-    }>,
-    // ... other fields
-  });
-
-
-  // Fetch packing slips
-  useEffect(() => {
-    const fetchPackingSlips = async () => {
-      try {
-        const response = await createPackingSlip(slipData);
-        setPackingSlips(response.data);
-      } catch (error) {
-        console.error('Failed to fetch packing slips', error);
-      }
-    };
-
-    fetchPackingSlips();
-  }, []);
-
-  // Define onEditDraft handler
-  const handleEditDraft = (id: number) => {
-    setSelectedSlipId(id);
-    setView('form');
-  };
-
-  const handleCreatePackingSlip = async (formData: PackingSlipFormData) => {
+  const fetchPackingSlips = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setIsSubmitting(true);
-      setError(null);
-      setSuccess(false);
-      
-      console.log("[MANAGER] Sending to API:", formData);
-      
-      // Add default location if missing
-      if (!formData.location_id) {
-        formData.location_id = "1";
-      }
-
-      // Convert items to proper types
-      const payload = {
-        ...formData,
-        items: formData.items.map(item => ({
-          ...item,
-          material_id: item.material_id.toString(),
-          gross_weight: item.gross_weight.toString(),
-          tare_weight: item.tare_weight.toString()
-        }))
-      };
-
-      const response = await createPackingSlip(payload);
-      console.log("[MANAGER] Response received:", response.data);
-      
-      // Handle success
-      setPackingSlips(prev => [...prev, response.data]);
-      setView('list');
-      setSuccess(true);
-      
-    } catch (error) {
-      let errorMessage = "Failed to create packing slip";
-      if (createPackingSlip(error)) {
-        errorMessage = error.response?.data?.error || error.message;
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      
-      console.error("[MANAGER] API error:", errorMessage);
-      setError(errorMessage);
+      const response = await getPackingSlips();
+      setPackingSlips(response.data);
+    } catch (err) {
+      setError('Failed to load packing slips. Please try again.');
+      console.error('Error fetching packing slips:', err);
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  return (
-    <div className="container mt-4">
-      <div className="d-flex justify-content-between mb-4">
-        <div className="btn-group">
+  useEffect(() => {
+    fetchPackingSlips();
+  }, []);
+
+  const handleCreateSuccess = () => {
+    setIsSubmitting(false);
+    fetchPackingSlips();
+    setView('list');
+  };
+
+  const handleFormSubmit = () => {
+    setIsSubmitting(true);
+  };
+
+  // Handle view navigation
+  const handleViewSlip = (id: number) => {
+    setSelectedSlipId(id);
+    setView('view');
+    navigate(`/packing-slips/${id}`); // Add this line
+  };
+
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+        <p className="ms-3">Loading packing slips...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mt-4">
+        <div className="alert alert-danger">
+          <p>{error}</p>
           <button 
-            className={`btn ${view === 'form' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => {
-              setSelectedSlipId(null);
-              setView('form');
-            }}
+            className="btn btn-primary"
+            onClick={fetchPackingSlips}
           >
-            Create New
-          </button>
-          <button 
-            className={`btn ${view === 'list' ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setView('list')}
-          >
-            View Drafts & Completed
+            Try Again
           </button>
         </div>
       </div>
+    );
+  }
 
+  return (
+    <div className="container mt-4">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h1>Packing Slips</h1>
+        
+        {view === 'list' && (
+          <button 
+            className="btn btn-primary"
+            onClick={() => setView('form')}
+          >
+            + Create New Slip
+          </button>
+        )}
+      </div>
+
+      {/* Form View */}
       {view === 'form' && (
         <PackingSlipForm 
+          onSubmit={() => {
+            handleFormSubmit();
+            handleCreateSuccess();
+          }}
           onSave={() => setView('list')}
-          onSubmit={handleCreatePackingSlip}
-          onEditDraft={handleEditDraft}
           isSubmitting={isSubmitting}
-          error={error}
-          success={success}
-          editData={selectedSlipId 
-            ? packingSlips.find(slip => slip.id === selectedSlipId)
-            : undefined
-          }
+          error={null}
+          success={false}
         />
       )}
-      
+
+      {/* Single Slip View */}
+      {view === 'view' && selectedSlipId && (
+        <PackingSlipView />
+      )}
+
+      {/* List View */}
       {view === 'list' && (
         <PackingSlipList 
           slips={packingSlips}
-          onView={(id: number) => {
-            setSelectedSlipId(id);
-            setView('view');
-          }}
-          onEdit={handleEditDraft}
-        />
-      )}
-      
-      {view === 'view' && selectedSlipId && (
-        <PackingSlipView 
-          id={selectedSlipId} 
-          onBack={() => setView('list')}
+          onView={handleViewSlip} // Updated to use new handler
         />
       )}
     </div>

@@ -1,24 +1,27 @@
-// src/components/PackingSlips/PackingSlipList.tsx
 import React from 'react';
-import { PackingSlip } from '../../types'; // Make sure this import exists
+import { useNavigate } from 'react-router-dom';
+import { PackingSlip } from '../../types';
 
 interface PackingSlipListProps {
   slips: PackingSlip[];
   onView: (id: number) => void;
-  onEdit: (id: number) => void;
 }
 
-const PackingSlipList: React.FC<PackingSlipListProps> = ({ slips, onView, onEdit }) => {
+const PackingSlipList: React.FC<PackingSlipListProps> = ({ slips, onView }) => {
+  const navigate = useNavigate();
+
+  if (slips.length === 0) return <div>No packing slips found</div>;
+
   return (
     <div className="table-responsive">
-      <table className="table table-striped">
+      <table className="table table-hover">
         <thead>
           <tr>
             <th>ID</th>
             <th>Type</th>
             <th>Status</th>
-            <th>Date</th>
-            <th>Total Net Weight</th>
+            <th>Customer</th>
+            <th>PO Number</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -27,19 +30,19 @@ const PackingSlipList: React.FC<PackingSlipListProps> = ({ slips, onView, onEdit
             <tr key={slip.id}>
               <td>{slip.id}</td>
               <td>{slip.slip_type}</td>
-              <td>{slip.status}</td>
-              <td>{new Date(slip.created_at).toLocaleDateString()}</td>
               <td>
-                {/* Fixed: Ensure values are numbers before arithmetic */}
-                {slip.packing_slip_items.reduce(
-                  (total, item) => total + 
-                    (Number(item.gross_weight) - Number(item.tare_weight)), 
-                  0
-                ).toFixed(2)}
+                <span className={`badge ${slip.status === 'completed' ? 'bg-success' : 'bg-warning'}`}>
+                  {slip.status}
+                </span>
               </td>
+              <td>{slip.to_name || 'N/A'}</td>
+              <td>{slip.po_number || 'N/A'}</td>
               <td>
-                <button className="btn btn-warning" onClick={() => onEdit(slip.id)}>
-                  View/Edit
+                <button 
+                  className="btn btn-sm btn-primary"
+                  onClick={() => onView(slip.id)}
+                >
+                  {slip.status === 'completed' ? 'View' : 'View/Edit'}
                 </button>
               </td>
             </tr>

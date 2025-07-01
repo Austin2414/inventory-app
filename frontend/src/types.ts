@@ -68,6 +68,12 @@ export interface PackingSlipFormData {
   slip_type: string;
   location_id: string;
   status: string;
+  from_name: string;
+  to_name: string;
+  truck_number: string;
+  trailer_number: string;
+  po_number: string;
+  seal_number: string;
   items: PackingSlipFormItem[]; // Use FormItem here
 }
 
