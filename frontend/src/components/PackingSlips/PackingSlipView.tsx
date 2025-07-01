@@ -17,8 +17,6 @@ const PackingSlipView: React.FC = () => {
         setIsLoading(true);
         setError(null);
         
-        console.log('Fetching slip with ID:', id);
-        
         if (!id) {
           throw new Error('Missing packing slip ID');
         }
@@ -29,16 +27,12 @@ const PackingSlipView: React.FC = () => {
         }
         
         const response = await getPackingSlip(slipId);
-        console.log('Received slip data:', response.data);
         setSlip(response.data);
       } catch (err) {
-        // Proper error handling for TypeScript
         const errorMessage = err instanceof Error 
           ? err.message 
           : 'Failed to load packing slip details';
-        
         setError(errorMessage);
-        console.error('API Error:', errorMessage);
       } finally {
         setIsLoading(false);
       }

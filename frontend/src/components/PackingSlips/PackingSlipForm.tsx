@@ -6,11 +6,34 @@ import {
   PackingSlipFormItem,
   PackingSlip
 } from '../../types';
-import { getLocations, getMaterials } from '../../services/api'; // Use centralized API service
+import { getLocations, getMaterials } from '../../services/api';
+
+// FIX: Update interface to match number types
+interface PackingSlipFormData {
+  slip_type: string;
+  location_id: number; // Changed to number
+  status: string;
+  from_name: string;
+  to_name: string;
+  truck_number: string;
+  trailer_number: string;
+  po_number: string;
+  seal_number: string;
+  items: PackingSlipFormItem[];
+}
+
+// FIX: Update item interface
+interface PackingSlipFormItem {
+  material_id: number; // Changed to number
+  gross_weight: number; // Changed to number
+  tare_weight: number; // Changed to number
+  remarks: string;
+  ticket_number: string;
+}
 
 interface PackingSlipFormProps {
   id?: number;
-  onSave: () => void;
+  onSave?: () => void;
   onEditDraft?: (id: number) => void;
   onSubmit: (formData: PackingSlipFormData) => void;
   isSubmitting: boolean;
@@ -28,11 +51,12 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
 }) => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
-  
-  // Initialize form data with all required fields
+  const [formError, setFormError] = useState<string | null>(null); // FIX: Added error state
+
+  // Initialize form data with proper types
   const [formData, setFormData] = useState<PackingSlipFormData>({
     slip_type: 'outbound',
-    location_id: '',
+    location_id: 0, // Number type
     status: 'draft',
     from_name: '',
     to_name: '',
@@ -41,15 +65,15 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
     po_number: '',
     seal_number: '',
     items: [{ 
-      material_id: '', 
-      gross_weight: '', 
-      tare_weight: '',
+      material_id: 0, // Number type
+      gross_weight: 0, // Number type
+      tare_weight: 0, // Number type
       remarks: '',
       ticket_number: ''
     }]
   });
 
-  // Fetch locations and materials using API service
+  // Fetch locations and materials
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -60,18 +84,19 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
         setMaterials(matResponse.data);
       } catch (error) {
         console.error('Error fetching data:', error);
+        setFormError('Failed to load required data'); // FIX: Use setFormError
       }
     };
     
     fetchData();
   }, []);
 
-  // Populate form when in edit mode
+  // Handle edit data
   useEffect(() => {
     if (editData) {
       setFormData({
         slip_type: editData.slip_type,
-        location_id: String(editData.location_id),
+        location_id: editData.location_id, // Already number
         status: editData.status,
         from_name: editData.from_name || '',
         to_name: editData.to_name || '',
@@ -80,9 +105,9 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
         po_number: editData.po_number || '',
         seal_number: editData.seal_number || '',
         items: editData.packing_slip_items.map(item => ({
-          material_id: String(item.material_id),
-          gross_weight: String(item.gross_weight),
-          tare_weight: String(item.tare_weight),
+          material_id: item.material_id, // Already number
+          gross_weight: item.gross_weight, // Already number
+          tare_weight: item.tare_weight, // Already number
           remarks: item.remarks || '',
           ticket_number: item.ticket_number || ''
         }))
@@ -96,9 +121,9 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
       items: [
         ...formData.items, 
         { 
-          material_id: '', 
-          gross_weight: '', 
-          tare_weight: '',
+          material_id: 0, 
+          gross_weight: 0, 
+          tare_weight: 0,
           remarks: '',
           ticket_number: ''
         }
@@ -115,16 +140,37 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
 
   const handleItemChange = (index: number, field: keyof PackingSlipFormItem, value: string) => {
     const newItems = [...formData.items];
-    newItems[index] = { ...newItems[index], [field]: value };
+    const numericValue = field.includes('_id') || field.includes('weight') 
+      ? parseFloat(value) || 0
+      : value;
+      
+    newItems[index] = { ...newItems[index], [field]: numericValue };
     setFormData({ ...formData, items: newItems });
   };
 
   const handleChange = (field: keyof PackingSlipFormData, value: string) => {
-    setFormData({ ...formData, [field]: value });
+    const numericValue = field === 'location_id' 
+      ? parseInt(value) || 0
+      : value;
+      
+    setFormData({ ...formData, [field]: numericValue });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Simple validation
+    if (formData.location_id === 0) {
+      setFormError('Location is required');
+      return;
+    }
+    
+    if (formData.items.some(item => item.material_id === 0)) {
+      setFormError('All items must have a material selected');
+      return;
+    }
+    
+    setFormError(null);
     onSubmit(formData);
   };
 
@@ -134,12 +180,9 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
         <h2 className="mb-0">{editData ? 'Edit Packing Slip' : 'Create Packing Slip'}</h2>
       </div>
       <div className="card-body">
-        {success && (
-          <div className="alert alert-success">
-            Packing slip {editData ? 'updated' : 'created'} successfully!
-          </div>
-        )}
+        {success && <div className="alert alert-success">Packing slip {editData ? 'updated' : 'created'} successfully!</div>}
         {error && <div className="alert alert-danger">{error}</div>}
+        {formError && <div className="alert alert-danger">{formError}</div>}
         
         <form onSubmit={handleSubmit}>
           <div className="row mb-3">
@@ -178,16 +221,16 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
               required
               disabled={editData?.status === 'completed'}
             >
-              <option value="">Select Location</option>
+              <option value="0">Select Location</option>
               {locations.map(location => (
-                <option key={location.id} value={String(location.id)}>
+                <option key={location.id} value={location.id}>
                   {location.name} {location.address ? `(${location.address})` : ''}
                 </option>
               ))}
             </select>
           </div>
           
-          {/* Shipment Information Section */}
+          {/* Shipment Information */}
           <div className="border p-3 mb-4 rounded">
             <h5 className="mb-3">Shipment Information</h5>
             
@@ -266,16 +309,14 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
           
           <h4 className="mt-4">Items</h4>
 
-          <div className="table-responsive mb-4">
-            <table className="table table-sm table-bordered">
-              <thead className="table-light">
+          <div className="table-responsive">
+            <table className="table table-sm">
+              <thead>
                 <tr>
                   <th>Material</th>
                   <th>Gross Weight</th>
                   <th>Tare Weight</th>
                   <th>Net Weight</th>
-                  <th>Ticket #</th>
-                  <th>Remarks</th>
                   <th style={{ width: '50px' }}></th>
                 </tr>
               </thead>
@@ -290,9 +331,9 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
                         required
                         disabled={editData?.status === 'completed'}
                       >
-                        <option value="">Select Material</option>
+                        <option value="0">Select Material</option>
                         {materials.map(material => (
-                          <option key={material.id} value={String(material.id)}>
+                          <option key={material.id} value={material.id}>
                             {material.name} ({material.category})
                           </option>
                         ))}
@@ -323,30 +364,9 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
                       />
                     </td>
                     <td className="align-middle">
-                      {item.gross_weight && item.tare_weight ? 
-                        (Number(item.gross_weight) - Number(item.tare_weight)).toFixed(2) : 
-                        '0.00'
-                      }
+                      {(item.gross_weight - item.tare_weight).toFixed(2)}
                     </td>
-                    <td>
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        value={item.ticket_number}
-                        onChange={e => handleItemChange(index, 'ticket_number', e.target.value)}
-                        disabled={editData?.status === 'completed'}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        value={item.remarks}
-                        onChange={e => handleItemChange(index, 'remarks', e.target.value)}
-                        disabled={editData?.status === 'completed'}
-                      />
-                    </td>
-                    <td className="align-middle text-center">
+                    <td className="align-middle">
                       {formData.items.length > 1 && (
                         <button 
                           type="button" 

@@ -23,6 +23,9 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/inventory" element={<InventoryList />} />
           <Route path="/packing-slips" element={<PackingSlipManager />} />
+          <Route path="/packing-slips/new" element={<PackingSlipManager initialView="form" />} />
+          {/* Add this route for packing slip details */}
+          <Route path="/packing-slips/:id" element={<PackingSlipView />} />
           <Route path="/reclassify" element={<ReclassifyForm />} />
           <Route path="/locations" element={<LocationList />} />
           <Route path="/locations/new" element={<LocationForm />} />

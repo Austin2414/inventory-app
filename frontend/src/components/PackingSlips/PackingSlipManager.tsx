@@ -5,8 +5,16 @@ import PackingSlipForm from './PackingSlipForm';
 import PackingSlipView from './PackingSlipView';
 import PackingSlipList from './PackingSlipList';
 import { PackingSlip } from '../../types';
+import { PackingSlipFormData } from '../../types';
+import { createPackingSlip } from '../../services/api';
 
-const PackingSlipManager: React.FC = () => {
+interface PackingSlipManagerProps {
+  initialView?: 'list' | 'form' | 'view';
+}
+
+const PackingSlipManager: React.FC<PackingSlipManagerProps> = ({ 
+  initialView = 'list' 
+}) => {
   const navigate = useNavigate(); // Add this
   const [view, setView] = useState<'list' | 'form' | 'view'>('list');
   const [packingSlips, setPackingSlips] = useState<PackingSlip[]>([]);
@@ -14,6 +22,7 @@ const PackingSlipManager: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const fetchPackingSlips = async () => {
     setLoading(true);
@@ -39,9 +48,24 @@ const PackingSlipManager: React.FC = () => {
     setView('list');
   };
 
-  const handleFormSubmit = () => {
-    setIsSubmitting(true);
-  };
+  const handleFormSubmit = async (formData: PackingSlipFormData) => {
+  setIsSubmitting(true);
+  setFormError(null);
+  
+  try {
+    // Call API to create slip
+    await createPackingSlip(formData);
+    
+    // Refresh list and return to list view
+    await fetchPackingSlips();
+    setView('list');
+  } catch (error) {
+    setFormError('Failed to create packing slip. Please try again.');
+    console.error('Creation error:', error);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   // Handle view navigation
   const handleViewSlip = (id: number) => {
@@ -96,12 +120,12 @@ const PackingSlipManager: React.FC = () => {
       {view === 'form' && (
         <PackingSlipForm 
           onSubmit={() => {
-            handleFormSubmit();
+            handleFormSubmit;
             handleCreateSuccess();
           }}
           onSave={() => setView('list')}
           isSubmitting={isSubmitting}
-          error={null}
+          error={formError}
           success={false}
         />
       )}
