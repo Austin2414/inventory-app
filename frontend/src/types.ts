@@ -48,7 +48,7 @@ export interface PackingSlipItem {
 
 // Packing Slip type
 export interface PackingSlip {
-  id: number;
+  id: string;
   slip_type: string;
   status: string;
   created_at: Date; 

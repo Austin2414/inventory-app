@@ -1,8 +1,9 @@
 // frontend/src/services/api.ts
 import axios from 'axios';
+import { PackingSlipFormData } from '../types';
 
 const api = axios.create({
-  baseURL: 'http://localhost:3001',
+  baseURL: '/api',
   timeout: 5000,
   headers: {
     'Content-Type': 'application/json',
@@ -50,10 +51,17 @@ export const createInventory = (data: { material_id: number; location_id: number
 
 // Packing Slips API - CRITICAL FIXES
 export const getPackingSlip = (id: number) => api.get(`/packing-slips/${id}`);
-export const updatePackingSlip = (id: number, data: any) => api.patch(`/packing-slips/${id}`, data); // Changed to PATCH
 export const deletePackingSlip = (id: number) => api.delete(`/packing-slips/${id}`);
 export const createPackingSlip = (data: any) => api.post('/packing-slips', data);
 export const getPackingSlips = () => api.get('/packing-slips/');
+export async function updatePackingSlip(id: number, formData: PackingSlipFormData) {
+  return await fetch(`/api/packing-slips/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(formData)
+  });
+}
+
 
 // Reclassification API
 export const reclassifyInventory = (data: any) => 

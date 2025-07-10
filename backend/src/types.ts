@@ -29,3 +29,12 @@ export type MaterialBody = {
   category: string;
   unit?: string;
 };
+
+export type RawItemInput = {
+  material_id: string;
+  gross_weight: string;
+  tare_weight: string;
+  remarks?: string;
+  ticket_number?: string;
+};
+

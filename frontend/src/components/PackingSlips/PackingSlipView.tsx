@@ -3,13 +3,16 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PackingSlip, PackingSlipItem } from '../../types';
 import { getPackingSlip } from '../../services/api';
+import PackingSlipForm from './PackingSlipForm';
+import { updatePackingSlip } from '../../services/api';
+
 
 const PackingSlipView: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
   const [slip, setSlip] = useState<PackingSlip | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { id } = useParams<{id: string }>();
 
   useEffect(() => {
     const fetchSlip = async () => {
@@ -73,18 +76,38 @@ const PackingSlipView: React.FC = () => {
   }
 
   if (!slip) {
-    return (
-      <div className="alert alert-warning my-4">
-        Packing slip not found
-        <button 
-          className="btn btn-outline-secondary ms-3"
-          onClick={() => navigate('/packing-slips')}
-        >
-          Back to List
-        </button>
-      </div>
-    );
-  }
+  return (
+    <div className="alert alert-warning my-4">
+      Packing slip not found
+      <button 
+        className="btn btn-outline-secondary ms-3"
+        onClick={() => navigate('/packing-slips')}
+      >
+        Back to List
+      </button>
+    </div>
+  );
+}
+
+// ✅ 2. Render editable form for drafts
+if (slip.status === 'draft') {
+  return (
+    <PackingSlipForm 
+      editData={slip}
+      onSubmit={async (formData) => {
+        try {
+          await updatePackingSlip(Number(slip.id), formData); // 🔧 Make sure this calls your PATCH endpoint
+          navigate('/packing-slips');
+        } catch (err) {
+          console.error('Failed to update slip:', err);
+        }
+      }}
+      isSubmitting={false}
+      onSave={() => {}}
+    />
+  );
+}
+
 
   return (
     <div className="card border-0 shadow-sm">

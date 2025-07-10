@@ -4,7 +4,7 @@ import { PackingSlip } from '../../types';
 
 interface PackingSlipListProps {
   slips: PackingSlip[];
-  onView: (id: number) => void;
+  onView: (id: string) => void;
 }
 
 const PackingSlipList: React.FC<PackingSlipListProps> = ({ slips, onView }) => {

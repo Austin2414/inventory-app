@@ -123,10 +123,42 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit(formData);
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  try {
+    if (!formData.to_name || formData.items.length === 0) {
+      throw new Error('Customer name and at least one item are required');
+    }
+
+    console.log("Submitting packing slip:", formData);
+
+
+    const method = editData && editData.status === 'draft' ? 'PATCH' : 'POST';
+    const url = editData && editData.status === 'draft'
+      ? `/api/packing-slips/${editData.id}`
+      : '/api/packing-slips';
+
+    const response = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to save packing slip');
+    }
+
+    const result = await response.json();
+    console.log('Save successful:', result);
+    // Add any success UI feedback here
+  } catch (error) {
+    console.error('Save error:', error);
+    // Add user notification here
+  }
+};
+
 
   return (
     <div className="card mt-4">

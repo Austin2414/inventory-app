@@ -12,7 +12,7 @@ import LocationForm from './components/Locations/LocationForm';
 import MaterialForm from './components/Materials/MaterialForm';
 import HomePage from './components/HomePage';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import PackingSlipView from './components/PackingSlips/PackingSlipView';
+import PackingSlipViewPage from './components/PackingSlips/PackingSlipViewPage';
 
 function App() {
   return (
@@ -23,6 +23,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/inventory" element={<InventoryList />} />
           <Route path="/packing-slips" element={<PackingSlipManager />} />
+          <Route path="/packing-slips/:id" element={<PackingSlipViewPage />} />
           <Route path="/reclassify" element={<ReclassifyForm />} />
           <Route path="/locations" element={<LocationList />} />
           <Route path="/locations/new" element={<LocationForm />} />
