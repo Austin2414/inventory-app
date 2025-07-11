@@ -79,8 +79,8 @@ app.post('/api/locations', handle(async (req, res) => {
 // Materials endpoints
 app.get('/api/materials', handle(async (req, res) => {
   try {
-    const materials = await prisma.materials.findMany();
-    res.json(materials);
+    const material = await prisma.materials.findMany();
+    res.json(material);
   } catch (error) {
     console.error('Error fetching materials:', error);
     res.status(500).json({ error: "Database error" });

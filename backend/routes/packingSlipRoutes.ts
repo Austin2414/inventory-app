@@ -36,7 +36,7 @@ interface RawPackingSlipItem {
   tare_weight: number;
   remarks: string | null;
   ticket_number: string | null;
-  materials: {
+  material: {
     name: string;
   };
 }
@@ -70,7 +70,7 @@ function transformPackingSlip(slip: RawPackingSlip): PackingSlip {
     packing_slip_items: (slip.packing_slip_items || []).map(item => ({
       id: String(item.id),
       material_id: item.material_id,
-      material_name: item.materials?.name ?? '',
+      material_name: item.material?.name ?? '',
       gross_weight: item.gross_weight,
       tare_weight: item.tare_weight,
       remarks: item.remarks || "",
@@ -128,7 +128,7 @@ async function reverseInventory(slip: PackingSlip) {
 router.get('/', handle(async (req, res) => {
   const slips = await prisma.packing_slips.findMany({
     include: {
-      packing_slip_items: { include: { materials: true } }
+      packing_slip_items: { include: { material: true } }
     },
     orderBy: { id: 'desc' }
   });
@@ -140,7 +140,7 @@ router.get('/status/:status', handle(async (req, res) => {
   const slips = await prisma.packing_slips.findMany({
     where: { status },
     include: {
-      packing_slip_items: { include: { materials: true } },
+      packing_slip_items: { include: { material: true } },
       locations: true
     }
   });
@@ -150,7 +150,7 @@ router.get('/status/:status', handle(async (req, res) => {
 router.get('/all', handle(async (req, res) => {
   const slips = await prisma.packing_slips.findMany({
     include: {
-      packing_slip_items: { include: { materials: true } },
+      packing_slip_items: { include: { material: true } },
       locations: true
     }
   });
@@ -164,15 +164,20 @@ router.get('/:id', handle(async (req, res) => {
   const slip = await prisma.packing_slips.findUnique({
     where: { id },
     include: {
-      packing_slip_items: { include: { materials: true } },
-      locations: true
-    }
+      packing_slip_items: {
+        include: {
+          material: true, // ✅ correct singular relation
+        },
+      },
+      locations: true,
+    },
   });
 
   if (!slip) return res.status(404).json({ error: "Packing slip not found" });
 
   res.json(transformPackingSlip(slip));
 }));
+
 
 router.post('/', handle(async (req, res) => {
   const body = req.body;
@@ -221,7 +226,7 @@ router.post('/', handle(async (req, res) => {
       }
     },
     include: {
-      packing_slip_items: { include: { materials: true } }
+      packing_slip_items: { include: { material: true } }
     }
   });
 
@@ -239,7 +244,7 @@ router.patch('/:id', handle(async (req, res) => {
   const current = await prisma.packing_slips.findUnique({
     where: { id },
     include: {
-      packing_slip_items: { include: { materials: true } },
+      packing_slip_items: { include: { material: true } },
       locations: true
     }
   });
@@ -288,7 +293,7 @@ router.patch('/:id', handle(async (req, res) => {
     const updated = await prisma.packing_slips.findUnique({
       where: { id },
       include: {
-        packing_slip_items: { include: { materials: true } },
+        packing_slip_items: { include: { material: true } },
       }
     });
 
@@ -305,7 +310,7 @@ router.patch('/:id', handle(async (req, res) => {
   const final = await prisma.packing_slips.findUnique({
     where: { id },
     include: {
-      packing_slip_items: { include: { materials: true } },
+      packing_slip_items: { include: { material: true } },
       locations: true
     }
   });

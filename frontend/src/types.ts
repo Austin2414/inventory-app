@@ -39,6 +39,8 @@ export interface PackingSlipFormItem {
 export interface PackingSlipItem {
   id: number;           // Added id field
   material_id: number;  // number from database
+  material_name?: string;
+  material?: Material;
   gross_weight: number; // number from database
   tare_weight: number;  // number from database
   net_weight?: number;  // optional calculated field

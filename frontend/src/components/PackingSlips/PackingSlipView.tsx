@@ -185,7 +185,7 @@ if (slip.status === 'draft') {
             <tbody>
               {(slip.packing_slip_items || []).map((item: PackingSlipItem) => (
                 <tr key={item.id}>
-                  <td>{item.material_id || 'N/A'}</td>
+                  <td>{item.material_name}</td>
                   <td>{item.gross_weight?.toString() || '0.00'} lb</td>
                   <td>{item.tare_weight?.toString() || '0.00'} lb</td>
                   <td>

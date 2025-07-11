@@ -76,5 +76,5 @@ model packing_slip_items {
   ticket_number   String?
   
   packing_slips   packing_slips @relation(fields: [packing_slip_id], references: [id])
-  materials       materials @relation(fields: [material_id], references: [id])
+  material       materials @relation(fields: [material_id], references: [id])
 }
