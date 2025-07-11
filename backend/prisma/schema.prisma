@@ -8,50 +8,55 @@ datasource db {
 }
 
 model User {
-  id            Int              @id @default(autoincrement())
-  username      String           @unique
-  email         String           @unique
-  password      String
-  }
+  id       Int    @id @default(autoincrement())
+  username String @unique
+  email    String @unique
+  password String
+}
 
 model locations {
   id      Int     @id @default(autoincrement())
   name    String
   address String?
-  
-  // Added these relations to fix the errors
-  inventory inventory[]
+
+  inventory     inventory[]
   packing_slips packing_slips[]
+
+  // NEW RELATION
+  reclassification reclassificationLog[]
 }
 
 model materials {
-  id       Int     @id @default(autoincrement())
+  id       Int    @id @default(autoincrement())
   name     String
   category String
-  unit     String  @default("lb")
-  
-  // Added these relations to fix the errors
-  inventory inventory[]
+  unit     String @default("lb")
+
+  inventory          inventory[]
   packing_slip_items packing_slip_items[]
+
+  // NEW RELATIONS
+  reclassify_from reclassificationLog[] @relation("FromMaterial")
+  reclassify_to   reclassificationLog[] @relation("ToMaterial")
 }
 
 model inventory {
-  id           Int     @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   material_id  Int
   quantity     Float
   location_id  Int
   last_updated DateTime @default(now())
-  
-  locations    locations @relation(fields: [location_id], references: [id])
-  materials    materials @relation(fields: [material_id], references: [id])
-  @@unique([material_id, location_id], name: "uniq_material_location")
 
+  locations locations @relation(fields: [location_id], references: [id])
+  materials materials @relation(fields: [material_id], references: [id])
+
+  @@unique([material_id, location_id], name: "uniq_material_location")
 }
 
 model packing_slips {
-  id             Int     @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   slip_type      String
-  status         String  @default("draft")
+  status         String   @default("draft")
   from_name      String?
   to_name        String?
   date_time      DateTime @default(now())
@@ -60,8 +65,8 @@ model packing_slips {
   po_number      String?
   seal_number    String?
   location_id    Int
-  
-  locations      locations @relation(fields: [location_id], references: [id])
+
+  locations          locations            @relation(fields: [location_id], references: [id])
   packing_slip_items packing_slip_items[]
 }
 
@@ -74,7 +79,22 @@ model packing_slip_items {
   // net_weight      Float?
   remarks         String?
   ticket_number   String?
-  
-  packing_slips   packing_slips @relation(fields: [packing_slip_id], references: [id])
-  material       materials @relation(fields: [material_id], references: [id])
+
+  packing_slips packing_slips @relation(fields: [packing_slip_id], references: [id])
+  material      materials     @relation(fields: [material_id], references: [id])
+}
+
+model reclassificationLog {
+  id               Int      @id @default(autoincrement())
+  from_material_id Int
+  to_material_id   Int
+  quantity         Float
+  location_id      Int
+  timestamp        DateTime @default(now())
+
+  from_material materials @relation("FromMaterial", fields: [from_material_id], references: [id])
+  to_material   materials @relation("ToMaterial", fields: [to_material_id], references: [id])
+  location      locations @relation(fields: [location_id], references: [id])
+
+  @@map("reclassificationlog")
 }

@@ -80,8 +80,8 @@ export interface PackingSlipFormData {
 }
 
 export interface ReclassifyFormData {
-  material_id: string;
-  from_location_id: string;
-  to_location_id: string;
+  from_material_id: string;
+  to_material_id: string;
   quantity: string;
+  location_id: string;
 }

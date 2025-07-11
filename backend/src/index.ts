@@ -3,6 +3,8 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
 import packingSlipRoutes from '../routes/packingSlipRoutes'
+import reclassifyRoutes from '../routes/reclassifyRoutes';
+
 
 const app = express();
 const prisma = new PrismaClient({
@@ -29,7 +31,7 @@ app.use(cors({
 
 app.use(express.json());
 app.use('/api/packing-slips', packingSlipRoutes)
-
+app.use('/api/inventory', reclassifyRoutes) // ✅
 
 // Utility function
 function getErrorMessage(error: unknown): string {
