@@ -67,4 +67,14 @@ export async function updatePackingSlip(id: number, formData: PackingSlipFormDat
 export const reclassifyInventory = (data: any) => 
   api.post('/inventory/reclassify', data);
 
+// Inventoryadjustment API
+export const createInventoryAdjustment = (data: {
+  material_id: number;
+  location_id: number;
+  change: number;
+  reason?: string;
+}) => api.post('/inventory-adjustments', data);
+
+
+
 export default api;

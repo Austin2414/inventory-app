@@ -55,6 +55,18 @@ const HomePage = () => {
             </div>
           </div>
         </div>
+
+        <div className="col-md-4 mb-4">
+          <div className="card h-100">
+            <div className="card-body text-center">
+              <h5 className="card-title">Inventory Adjustments</h5>
+              <p className="card-text">Manually make adjustments to correct inventory</p>
+              <Link to="/inventory-adjustment" className="btn btn-warning">
+                Adjust Inventory
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

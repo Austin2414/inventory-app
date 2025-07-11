@@ -13,6 +13,8 @@ import MaterialForm from './components/Materials/MaterialForm';
 import HomePage from './components/HomePage';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import PackingSlipViewPage from './components/PackingSlips/PackingSlipViewPage';
+import InventoryAdjustmentForm from './components/Inventory/InventoryAdjustmentForm';
+
 
 function App() {
   return (
@@ -29,6 +31,7 @@ function App() {
           <Route path="/locations/new" element={<LocationForm />} />
           <Route path="/materials" element={<MaterialList />} />
           <Route path="/materials/new" element={<MaterialForm />} />
+          <Route path="/inventory-adjustment" element={<InventoryAdjustmentForm />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </div>
