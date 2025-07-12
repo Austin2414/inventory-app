@@ -1,41 +1,52 @@
 // src/components/Layout/Navbar.tsx
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 const Navbar = () => {
   return (
-    <nav className="navbar navbar-expand-lg navbar-light bg-light">
-      <div className="container">
-        <Link className="navbar-brand" to="/">Inventory App</Link>
-        <div className="collapse navbar-collapse">
-          <ul className="navbar-nav me-auto">
-            <li className="nav-item">
-              <Link className="nav-link" to="/inventory">Inventory</Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link" to="/packing-slips/new">Packing Slips</Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link" to="/reclassify">Reclassify</Link>
-            </li>
-            <li className="nav-item dropdown">
-              <a className="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                Management
-              </a>
-              <ul className="dropdown-menu" aria-labelledby="navbarDropdown">
-                <li><Link className="dropdown-item" to="/locations">Locations</Link></li>
-                <li><Link className="dropdown-item" to="/materials">Materials</Link></li>
-                <li><hr className="dropdown-divider" /></li>
-                <li><Link className="dropdown-item" to="/locations/new">Add Location</Link></li>
-                <li><Link className="dropdown-item" to="/materials/new">Add Material</Link></li>
-              </ul>
-            </li>
-          </ul>
-        </div>
+    <nav className="navbar navbar-expand-lg navbar-dark bg-dark px-3 shadow">
+      <NavLink className="navbar-brand fw-bold" to="/">
+        🏭 CrossMetalsLLC
+      </NavLink>
+
+      <button
+        className="navbar-toggler"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#navbarNav"
+        aria-controls="navbarNav"
+        aria-expanded="false"
+        aria-label="Toggle navigation"
+      >
+        <span className="navbar-toggler-icon"></span>
+      </button>
+
+      <div className="collapse navbar-collapse" id="navbarNav">
+        <ul className="navbar-nav ms-auto">
+          <li className="nav-item">
+            <NavLink to="/inventory" className="nav-link">
+              Inventory
+            </NavLink>
+          </li>
+          <li className="nav-item">
+            <NavLink to="/packing-slips" className="nav-link">
+              Packing Slips
+            </NavLink>
+          </li>
+          <li className="nav-item">
+            <NavLink to="/reclassify" className="nav-link">
+              Reclassify
+            </NavLink>
+          </li>
+          <li className="nav-item">
+            <NavLink to="/inventory-adjustments" className="nav-link">
+              Manual Adjustments
+            </NavLink>
+          </li>
+        </ul>
       </div>
     </nav>
   );
 };
 
 export default Navbar;
-export {};

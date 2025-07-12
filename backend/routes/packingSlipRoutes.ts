@@ -18,6 +18,7 @@ interface PackingSlip {
   trailer_number: string | null;
   po_number: string | null;
   seal_number: string | null;
+  date_time: Date;
   packing_slip_items: {
     id: string;
     material_id: number;
@@ -52,6 +53,7 @@ interface RawPackingSlip {
   trailer_number: string | null;
   po_number: string | null;
   seal_number: string | null;
+  date_time: Date;
   packing_slip_items?: RawPackingSlipItem[];
 }
 
@@ -67,6 +69,7 @@ function transformPackingSlip(slip: RawPackingSlip): PackingSlip {
     trailer_number: slip.trailer_number,
     po_number: slip.po_number,
     seal_number: slip.seal_number,
+    date_time: slip.date_time,
     packing_slip_items: (slip.packing_slip_items || []).map(item => ({
       id: String(item.id),
       material_id: item.material_id,
@@ -324,10 +327,32 @@ router.delete('/:id', handle(async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: "Invalid packing slip ID" });
 
+  // Fetch the slip with items to check status and reverse inventory
+  const slip = await prisma.packing_slips.findUnique({
+    where: { id },
+    include: {
+      packing_slip_items: { include: { material: true } }
+    }
+  });
+
+  if (!slip) return res.status(404).json({ error: "Packing slip not found" });
+
+    console.log("🧾 Deleting slip ID:", id, "with status:", slip.status);
+    console.log("🧾 Items:", slip.packing_slip_items);
+
+    if (slip.status === 'completed') {
+      console.log("♻️ Reversing inventory...");
+      await reverseInventory(transformPackingSlip(slip));
+  }
+
+  
+
+  // 🚮 Delete related items then the slip itself
   await prisma.packing_slip_items.deleteMany({ where: { packing_slip_id: id } });
   await prisma.packing_slips.delete({ where: { id } });
 
   res.status(204).end();
 }));
+
 
 export default router;

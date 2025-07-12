@@ -31,7 +31,7 @@ function App() {
           <Route path="/locations/new" element={<LocationForm />} />
           <Route path="/materials" element={<MaterialList />} />
           <Route path="/materials/new" element={<MaterialForm />} />
-          <Route path="/inventory-adjustment" element={<InventoryAdjustmentForm />} />
+          <Route path="/inventory-adjustments" element={<InventoryAdjustmentForm />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </div>

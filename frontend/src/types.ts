@@ -53,7 +53,7 @@ export interface PackingSlip {
   id: string;
   slip_type: string;
   status: string;
-  created_at: Date; 
+  date_time: Date; 
   packing_slip_items: PackingSlipItem[];
   from_name?: string;
   to_name?: string;

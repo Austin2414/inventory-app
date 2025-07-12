@@ -1,71 +1,65 @@
 // src/components/Inventory/InventoryList.tsx
 import React, { useEffect, useState } from 'react';
 import { getInventory } from '../../services/api';
-import { Inventory } from '../../types';
 
 const InventoryList = () => {
-  // 1. Proper state declarations with all setters
-  const [inventory, setInventory] = useState<Inventory[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [inventory, setInventory] = useState([]);
+  const formatDate = (dateString: string | Date) => {
+  const date = new Date(dateString);
+  return date.toLocaleString(undefined, {
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
 
   useEffect(() => {
-    const fetchInventory = async () => {
+    const fetchData = async () => {
       try {
-        setIsLoading(true);
-        const response = await getInventory();
-        setInventory(response.data);
-        setError(null);
-      } catch (error) {
-        // 2. Handle 'unknown' error type
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-        setError(`Failed to load inventory data: ${errorMessage}`);
-        console.error('Error fetching inventory:', errorMessage);
-      } finally {
-        setIsLoading(false);
+        const res = await getInventory();
+        setInventory(res.data);
+      } catch (err) {
+        console.error('Error fetching inventory:', err);
       }
     };
-    fetchInventory();
+    fetchData();
   }, []);
 
-  if (isLoading) {
-    return <div className="text-center my-5">Loading inventory...</div>;
-  }
-
-  if (error) {
-    return <div className="alert alert-danger my-4">{error}</div>;
-  }
-
-  if (inventory.length === 0) {
-    return <div className="alert alert-info my-4">No inventory items found</div>;
-  }
-
   return (
-    <div className="card mt-4">
+    <div className="card shadow">
       <div className="card-header bg-primary text-white">
-        <h2 className="mb-0">Current Inventory</h2>
+        <h3 className="mb-0">📦 Current Inventory</h3>
       </div>
       <div className="card-body p-0">
-        <table className="table table-striped mb-0">
-          <thead className="thead-dark">
+        <table className="table table-hover table-striped mb-0">
+          <thead className="table-light">
             <tr>
               <th>Material</th>
               <th>Category</th>
-              <th>Location</th>
-              <th>Quantity</th>
+              <th className="text-end">Quantity</th>
               <th>Last Updated</th>
             </tr>
           </thead>
           <tbody>
-            {inventory.map(item => (
-              <tr key={item.id}>
-                <td>{item.materials.name}</td>
-                <td>{item.materials.category}</td>
-                <td>{item.locations.name}</td>
-                <td>{item.quantity} {item.materials.unit}</td>
-                <td>{new Date(item.last_updated).toLocaleString()}</td>
+            {inventory.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="text-center py-4">
+                  No inventory records found.
+                </td>
               </tr>
-            ))}
+            ) : (
+              inventory.map((item: any) => (
+                <tr key={item.id}>
+                  <td>{item.materials.name}</td>
+                  <td>{item.materials.category}</td>
+                  <td className="text-end">{item.quantity.toLocaleString()} {item.materials.unit}</td>
+                  <td>{formatDate(item.last_updated)}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -74,4 +68,3 @@ const InventoryList = () => {
 };
 
 export default InventoryList;
-export {};

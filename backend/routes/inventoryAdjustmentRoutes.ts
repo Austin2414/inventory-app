@@ -5,7 +5,9 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 router.post('/', async (req, res) => {
-  const { material_id, location_id, change, reason } = req.body;
+  // 👇 Fallback to location_id = 1 if not provided
+  const location_id = req.body.location_id ?? 1;
+  const { material_id, change, reason } = req.body;
 
   if (typeof change !== 'number' || !material_id || !location_id) {
     return res.status(400).json({ error: 'Invalid input' });

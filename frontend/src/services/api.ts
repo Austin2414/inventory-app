@@ -51,9 +51,10 @@ export const createInventory = (data: { material_id: number; location_id: number
 
 // Packing Slips API - CRITICAL FIXES
 export const getPackingSlip = (id: number) => api.get(`/packing-slips/${id}`);
-export const deletePackingSlip = (id: number) => api.delete(`/packing-slips/${id}`);
 export const createPackingSlip = (data: any) => api.post('/packing-slips', data);
 export const getPackingSlips = () => api.get('/packing-slips/');
+export const deletePackingSlip = (id: number) =>
+  api.delete(`/packing-slips/${id}`);
 export async function updatePackingSlip(id: number, formData: PackingSlipFormData) {
   return await fetch(`/api/packing-slips/${id}`, {
     method: 'PATCH',
@@ -74,7 +75,5 @@ export const createInventoryAdjustment = (data: {
   change: number;
   reason?: string;
 }) => api.post('/inventory-adjustments', data);
-
-
 
 export default api;
