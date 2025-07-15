@@ -24,13 +24,11 @@ router.post('/', async (req, res) => {
       },
       update: {
         quantity: { increment: change },
-        last_updated: new Date()
       },
       create: {
         material_id,
         location_id,
         quantity: change,
-        last_updated: new Date()
       }
     });
 

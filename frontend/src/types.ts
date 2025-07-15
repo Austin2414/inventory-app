@@ -63,6 +63,8 @@ export interface PackingSlip {
   seal_number?: string;
   location_id?: number;
   user_id?: number;
+  location_name?: string;
+  location?: Location;
 }
 
 // Form data types

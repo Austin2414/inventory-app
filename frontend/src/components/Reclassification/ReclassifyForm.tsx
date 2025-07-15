@@ -8,7 +8,7 @@ const ReclassifyForm = () => {
     to_material_id: '',
     quantity: ''
   });
-
+ 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -30,7 +30,8 @@ const ReclassifyForm = () => {
       await reclassifyInventory({
         from_material_id: Number(formData.from_material_id),
         to_material_id: Number(formData.to_material_id),
-        quantity: Number(formData.quantity)
+        quantity: Number(formData.quantity),
+        location_id: 1
       });
       setSuccess(true);
       setFormData({ from_material_id: '', to_material_id: '', quantity: '' });

@@ -47,7 +47,7 @@ model inventory {
   material_id  Int
   quantity     Float
   location_id  Int
-  last_updated DateTime @default(now())
+  last_updated DateTime @updatedAt
 
   locations locations @relation(fields: [location_id], references: [id])
   materials materials @relation(fields: [material_id], references: [id])
@@ -68,9 +68,10 @@ model packing_slips {
   seal_number    String?
   location_id    Int
 
-  locations          locations            @relation(fields: [location_id], references: [id])
+  location           locations            @relation(fields: [location_id], references: [id])
   packing_slip_items packing_slip_items[]
 }
+
 
 model packing_slip_items {
   id              Int     @id @default(autoincrement())
@@ -93,7 +94,6 @@ model reclassificationLog {
   quantity         Float
   location_id      Int
   timestamp        DateTime @default(now())
-
   from_material materials @relation("FromMaterial", fields: [from_material_id], references: [id])
   to_material   materials @relation("ToMaterial", fields: [to_material_id], references: [id])
   location      locations @relation(fields: [location_id], references: [id])

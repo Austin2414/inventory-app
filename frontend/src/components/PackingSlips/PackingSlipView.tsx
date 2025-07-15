@@ -1,10 +1,8 @@
-// src/components/PackingSlips/PackingSlipView.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PackingSlip, PackingSlipItem } from '../../types';
-import { getPackingSlip, deletePackingSlip} from '../../services/api';
+import { getPackingSlip, deletePackingSlip, updatePackingSlip } from '../../services/api';
 import PackingSlipForm from './PackingSlipForm';
-import { updatePackingSlip } from '../../services/api';
 
 const PackingSlipView: React.FC = () => {
   const [slip, setSlip] = useState<PackingSlip | null>(null);
@@ -12,69 +10,62 @@ const PackingSlipView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const slipRef = useRef<HTMLDivElement>(null);
+
   const formatNumber = (num: number) => new Intl.NumberFormat().format(num);
   const formatDate = (dateString: string | Date) => {
-      const date = new Date(dateString);
-      return date.toLocaleString(undefined, {
-        month: '2-digit',
-        day: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      });
+    const date = new Date(dateString);
+    return date.toLocaleString(undefined, {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
   };
+
   const handleDelete = async () => {
-  if (!slip?.id) return;
-
-  const confirmDelete = window.confirm(
-    'Are you sure you want to delete this packing slip? This cannot be undone.'
-  );
-
-  if (!confirmDelete) return;
-
-  try {
+    if (!slip?.id) return;
+    const confirm = window.confirm('Delete this packing slip? This cannot be undone.');
+    if (!confirm) return;
     await deletePackingSlip(Number(slip.id));
-    navigate('/packing-slips', { replace: true }); // auto-reload list
-  } catch (err) {
-    console.error('Failed to delete packing slip:', err);
-    alert('Error deleting packing slip.');
-  }
-};
+    navigate('/packing-slips', { replace: true });
+  };
+
+  const handlePrint = () => {
+    if (!slipRef.current) return;
+    const printContents = slipRef.current.innerHTML;
+    const originalContents = document.body.innerHTML;
+    document.body.innerHTML = printContents;
+    window.print();
+    document.body.innerHTML = originalContents;
+    window.location.reload(); // restore interactivity
+  };
 
   useEffect(() => {
     const fetchSlip = async () => {
       try {
         setIsLoading(true);
         setError(null);
-
         if (!id) throw new Error('Missing packing slip ID');
         const slipId = parseInt(id);
         if (isNaN(slipId)) throw new Error('Invalid packing slip ID');
-
         const response = await getPackingSlip(slipId);
         setSlip(response.data);
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load packing slip details';
-        setError(errorMessage);
-        console.error('API Error:', errorMessage);
+        const msg = err instanceof Error ? err.message : 'Failed to load packing slip';
+        setError(msg);
+        console.error(msg);
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchSlip();
   }, [id]);
 
   if (isLoading) {
-    return (
-      <div className="text-center my-5">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-        <p className="mt-2">Loading packing slip details...</p>
-      </div>
-    );
+    return <div className="text-center mt-5">Loading...</div>;
   }
 
   if (error) {
@@ -99,146 +90,137 @@ const PackingSlipView: React.FC = () => {
     );
   }
 
-  // Editable form for draft slips
   if (slip.status === 'draft') {
     return (
       <PackingSlipForm
         editData={slip}
         onSubmit={async (formData) => {
-          try {
-            await updatePackingSlip(Number(slip.id), formData);
-            navigate('/packing-slips');
-          } catch (err) {
-            console.error('Failed to update slip:', err);
-          }
+          await updatePackingSlip(Number(slip.id), formData);
+          navigate('/packing-slips');
         }}
         isSubmitting={false}
-        onSave={() => {
-          // Reload current page or navigate to list after success
-          window.location.reload();
-          // or: navigate('/packing-slips');
-        }}
+        onSave={() => window.location.reload()}
       />
     );
   }
 
-  // Render completed slip view
   return (
-    <div className="card border-0 shadow-sm">
-      <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+  <div className="d-flex flex-column min-vh-100">
+    <div className="container mt-3 flex-grow-1">
+      {/* Buttons */}
+      <div className="d-flex justify-content-between align-items-center mb-2 d-print-none">
+        <button className="btn btn-outline-secondary btn-sm" onClick={() => navigate(-1)}>
+          ← Back
+        </button>
         <div>
-          <h2 className="mb-1">Customer: {slip.to_name || 'N/A'}</h2>
-            <small className="text-light">
-              Packing Slip #{slip.id || 'N/A'} • {formatDate(slip.date_time) || 'No date'}
-            </small>
-          <div className="d-flex gap-3 mt-2">
-            <span className="badge bg-light text-dark">{slip.slip_type?.toUpperCase() || 'UNKNOWN TYPE'}</span>
-            <span className={`badge ${slip.status === 'completed' ? 'bg-success' : 'bg-warning text-dark'}`}>
-              {slip.status?.toUpperCase() || 'UNKNOWN STATUS'}
-            </span>
-          </div>
-        </div>
-
-        <div>
-          <button className="btn btn-light me-2" onClick={() => navigate(-1)}>
-            &larr; Back to List
-          </button>
-          <button className="btn btn-danger" onClick={handleDelete}>
-            Delete
+          <button className="btn btn-outline-primary btn-sm me-2" onClick={handlePrint}>
+            🖨️ Print
           </button>
         </div>
-
       </div>
 
-      <div className="card-body">
-        {/* Header Information */}
-        <div className="row mb-4 border-bottom pb-3">
-          <div className="col-md-4">
-            <div className="mb-2">
-              <label className="form-label fw-bold">From:</label>
-              <p className="mb-0">{slip.from_name || 'N/A'}</p>
-            </div>
+      {/* Printable Section */}
+      <div className="border rounded bg-white p-2 shadow-sm" ref={slipRef}>
+        {/* Header */}
+        <div className="mb-3 border-bottom pb-2">
+          <div className="d-flex justify-content-between align-items-start flex-wrap">
             <div>
-              <label className="form-label fw-bold">PO Number:</label>
-              <p className="mb-0">{slip.po_number || 'N/A'}</p>
+              <h5 className="text-primary mb-1">Cross Metals LLC</h5>
+              {slip.location?.address && (
+                <div className="text-muted small">{slip.location.address}</div>
+              )}
+              <div className="text-muted small">Packing Slip #{slip.id}</div>
+              <div className="text-muted small">{formatDate(slip.date_time)}</div>
+            </div>
+            <div className="text-end">
+              <div className="badge bg-secondary me-2">{slip.slip_type?.toUpperCase()}</div>
+              <div
+                className={`badge ${
+                  slip.status === 'completed' ? 'bg-success' : 'bg-warning text-dark'
+                }`}
+              >
+                {slip.status?.toUpperCase()}
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="col-md-4">
-            <div className="mb-2">
-              <label className="form-label fw-bold">Location:</label>
-              <p className="mb-0">Location #{slip.location_id || 'N/A'}</p>
-            </div>
-            <div>
-              <label className="form-label fw-bold">Seal Number:</label>
-              <p className="mb-0">{slip.seal_number || 'N/A'}</p>
-            </div>
+
+        {/* Customer Info */}
+        <div className="mb-2">
+          <strong>Customer:</strong> <span className="fw-normal">{slip.to_name || 'N/A'}</span>
+        </div>
+
+        {/* Shipment Info */}
+        <div className="row mb-2">
+          <div className="col-md-6 small">
+            <p className="mb-1"><strong>Truck #:</strong> {slip.truck_number || 'N/A'}</p>
+            <p className="mb-1"><strong>Trailer #:</strong> {slip.trailer_number || 'N/A'}</p>
           </div>
-
-          <div className="col-md-4">
-            <div className="mb-2">
-              <label className="form-label fw-bold">Truck:</label>
-              <p className="mb-0">{slip.truck_number || 'N/A'}</p>
-            </div>
-            <div>
-              <label className="form-label fw-bold">Trailer:</label>
-              <p className="mb-0">{slip.trailer_number || 'N/A'}</p>
-            </div>
+          <div className="col-md-6 small">
+            <p className="mb-1"><strong>PO #:</strong> {slip.po_number || 'N/A'}</p>
+            <p className="mb-1"><strong>Seal #:</strong> {slip.seal_number || 'N/A'}</p>
           </div>
         </div>
 
         {/* Items Table */}
-        <h4 className="mb-3">Items</h4>
+        <h6 className="mb-2">Items</h6>
         <div className="table-responsive">
-          <table className="table table-striped table-hover">
-            <thead className="table-primary text-white">
+          <table className="table table-bordered table-sm align-middle mb-2">
+            <thead className="table-light small">
               <tr>
+                <th style={{ width: '2rem' }}>#</th>
                 <th>Material</th>
-                <th>Gross Weight</th>
-                <th>Tare Weight</th>
-                <th>Net Weight</th>
+                <th>Gross (lb)</th>
+                <th>Tare (lb)</th>
+                <th>Net (lb)</th>
                 <th>Ticket #</th>
                 <th>Remarks</th>
               </tr>
             </thead>
-            <tbody>
-              {(slip.packing_slip_items || []).map((item: PackingSlipItem) => {
-                const gross = typeof item.gross_weight === 'number' ? item.gross_weight : null;
-                const tare = typeof item.tare_weight === 'number' ? item.tare_weight : 0; // Default to 0
-                const net = gross != null ? gross - tare : null;
-
+            <tbody className="small">
+              {slip.packing_slip_items.map((item, index) => {
+                const gross = item.gross_weight || 0;
+                const tare = item.tare_weight || 0;
+                const net = gross - tare;
                 return (
                   <tr key={item.id}>
+                    <td>{index + 1}</td>
                     <td>{item.material_name || '-'}</td>
-                    <td>{gross != null ? `${formatNumber(gross)} lb` : '-'}</td>
-                    <td>{formatNumber(tare)} lb</td>
-                    <td>{net != null ? `${formatNumber(net)} lb` : '-'}</td>
+                    <td>{formatNumber(gross)}</td>
+                    <td>{formatNumber(tare)}</td>
+                    <td>{formatNumber(net)}</td>
                     <td>{item.ticket_number || '-'}</td>
                     <td>{item.remarks || '-'}</td>
                   </tr>
                 );
               })}
             </tbody>
-
-
           </table>
-          {slip.packing_slip_items.length > 0 && (
-            <div className="text-end fw-bold mt-2 me-1">
-              Total Net Weight:{' '}
-              {formatNumber(
-                slip.packing_slip_items.reduce(
-                  (sum, item) => sum + ((item.gross_weight || 0) - (item.tare_weight || 0)),
-                  0
-                )
-              )} lb
-
-            </div>
-          )}
+          <div className="text-end fw-bold small">
+            Total Net Weight:{' '}
+            {formatNumber(
+              slip.packing_slip_items.reduce(
+                (sum, item) => sum + ((item.gross_weight || 0) - (item.tare_weight || 0)),
+                0
+              )
+            )}{' '}
+            lb
+          </div>
         </div>
-
       </div>
     </div>
-  );
+
+    {/* Delete button - hidden on print */}
+    <div className="d-print-none p-2">
+      <button className="btn btn-outline-danger btn-sm" onClick={handleDelete}>
+        Delete Packing Slip
+      </button>
+    </div>
+  </div>
+);
+
+
 };
 
 export default PackingSlipView;

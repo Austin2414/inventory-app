@@ -11,6 +11,11 @@ interface PackingSlip {
   id: string;
   slip_type: string;
   location_id: number;
+  location_name?: string;
+  location?: {
+    name: string;
+    address?: string | null;
+  };
   status: string;
   from_name: string | null;
   to_name: string | null;
@@ -55,6 +60,10 @@ interface RawPackingSlip {
   seal_number: string | null;
   date_time: Date;
   packing_slip_items?: RawPackingSlipItem[];
+  location?: {
+    name: string;
+    address?: string | null;
+  }
 }
 
 function transformPackingSlip(slip: RawPackingSlip): PackingSlip {
@@ -62,6 +71,11 @@ function transformPackingSlip(slip: RawPackingSlip): PackingSlip {
     id: String(slip.id),
     slip_type: slip.slip_type,
     location_id: slip.location_id,
+    location_name: slip.location?.name ?? 'N/A',
+    location: slip.location ? {
+      name: slip.location.name,
+      address: slip.location.address ?? undefined
+    } : undefined,
     status: slip.status,
     from_name: slip.from_name,
     to_name: slip.to_name,
@@ -82,6 +96,7 @@ function transformPackingSlip(slip: RawPackingSlip): PackingSlip {
   };
 }
 
+
 async function updateInventory(slip: PackingSlip) {
 
   console.log("🚀 updateInventory called for slip ID:", slip.id);
@@ -98,7 +113,9 @@ async function updateInventory(slip: PackingSlip) {
           location_id: slip.location_id
         }
       },
-      update: { quantity: { increment: quantityChange } },
+      update: { 
+        quantity: { increment: quantityChange }, 
+      },
       create: {
         material_id: item.material_id,
         location_id: slip.location_id,
@@ -121,7 +138,9 @@ async function reverseInventory(slip: PackingSlip) {
           location_id: slip.location_id
         }
       },
-      data: { quantity: { increment: quantityChange } }
+      data: { 
+        quantity: { increment: quantityChange }, 
+      }
     });
   }
 }
@@ -144,7 +163,7 @@ router.get('/status/:status', handle(async (req, res) => {
     where: { status },
     include: {
       packing_slip_items: { include: { material: true } },
-      locations: true
+      location: true
     }
   });
   res.json(slips.map(transformPackingSlip));
@@ -154,7 +173,7 @@ router.get('/all', handle(async (req, res) => {
   const slips = await prisma.packing_slips.findMany({
     include: {
       packing_slip_items: { include: { material: true } },
-      locations: true
+      location: true
     }
   });
   res.json(slips.map(transformPackingSlip));
@@ -172,7 +191,7 @@ router.get('/:id', handle(async (req, res) => {
           material: true, // ✅ correct singular relation
         },
       },
-      locations: true,
+      location: true,
     },
   });
 
@@ -248,7 +267,7 @@ router.patch('/:id', handle(async (req, res) => {
     where: { id },
     include: {
       packing_slip_items: { include: { material: true } },
-      locations: true
+      location: true
     }
   });
 
@@ -314,7 +333,7 @@ router.patch('/:id', handle(async (req, res) => {
     where: { id },
     include: {
       packing_slip_items: { include: { material: true } },
-      locations: true
+      location: true
     }
   });
 

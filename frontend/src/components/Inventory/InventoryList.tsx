@@ -54,7 +54,8 @@ const InventoryList = () => {
               inventory.map((item: any) => (
                 <tr key={item.id}>
                   <td>{item.materials.name}</td>
-                  <td>{item.materials.category}</td>
+                  <td>{item.materials.category.charAt(0).toUpperCase() + item.materials.category.slice(1)}</td>
+
                   <td className="text-end">{item.quantity.toLocaleString()} {item.materials.unit}</td>
                   <td>{formatDate(item.last_updated)}</td>
                 </tr>

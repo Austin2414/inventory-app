@@ -29,10 +29,10 @@ const PackingSlipList: React.FC<PackingSlipListProps> = ({ slips, onView }) => {
           {slips.map(slip => (
             <tr key={slip.id}>
               <td>{slip.id}</td>
-              <td>{slip.slip_type}</td>
+              <td>{slip.slip_type.charAt(0).toUpperCase() + slip.slip_type.slice(1)}</td>
               <td>
                 <span className={`badge ${slip.status === 'completed' ? 'bg-success' : 'bg-warning'}`}>
-                  {slip.status}
+                  {slip.status.charAt(0).toUpperCase() + slip.status.slice(1)}
                 </span>
               </td>
               <td>{slip.to_name || 'N/A'}</td>

@@ -55,8 +55,8 @@ app.get('/', handle(async (req, res) => {
 // Locations endpoints
 app.get('/api/locations', handle(async (req, res) => {
   try {
-    const locations = await prisma.locations.findMany();
-    res.json(locations);
+    const location = await prisma.locations.findMany();
+    res.json(location);
   } catch (error) {
     console.error('Error fetching locations:', error);
     res.status(500).json({ error: "Database error" });
