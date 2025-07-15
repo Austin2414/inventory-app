@@ -11,3 +11,27 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.react-select__control {
+  border-color: #ced4da;
+  min-height: 28px;
+  font-size: 0.875rem;
+  border-radius: 0.25rem;
+}
+.react-select__control--is-focused {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13,110,253,.25);
+}
+.react-select__menu {
+  font-size: 0.875rem;
+  z-index: 1050;
+}
+.react-select__option--is-focused {
+  background-color: #e9ecef;
+  color: #212529;
+}
+.react-select__option--is-selected {
+  background-color: #0d6efd;
+  color: white;
+}
+

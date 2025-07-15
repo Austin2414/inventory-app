@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Location, Material, PackingSlipFormData, PackingSlipFormItem, PackingSlip } from '../../types';
 import { getLocations, getMaterials, deletePackingSlip } from '../../services/api';
+import Select from 'react-select';
 interface PackingSlipFormProps {
   id?: number;
   onSave: () => void;
@@ -347,20 +348,53 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
                 <tr key={index}>
                   <td>{index + 1}</td>
                   <td>
-                    <select
-                      className="form-select form-select-sm"
-                      value={item.material_id}
-                      onChange={e => handleItemChange(index, 'material_id', e.target.value)}
-                      required
-                      disabled={editData?.status === 'completed'}
-                    >
-                      <option value="">Select Material</option>
-                      {materials.map(material => (
-                        <option key={material.id} value={String(material.id)}>
-                          {material.name}
-                        </option>
-                      ))}
-                    </select>
+                    <Select
+                      classNamePrefix="react-select"
+                      value={materials
+                        .map(mat => ({ value: String(mat.id), label: mat.name }))
+                        .find(opt => opt.value === String(item.material_id))}
+                      onChange={(selectedOption) =>
+                        handleItemChange(index, 'material_id', selectedOption?.value || '')
+                      }
+                      options={materials.map(mat => ({ value: String(mat.id), label: mat.name }))}
+                      isDisabled={editData?.status === 'completed'}
+                      placeholder="Select material..."
+                      styles={{
+                        control: (base, state) => ({
+                          ...base,
+                          minHeight: '28px',
+                          height: '28px',
+                          fontSize: '0.875rem',
+                          borderRadius: '6px',
+                          borderColor: state.isFocused ? '#0d6efd' : '#ced4da',
+                          boxShadow: state.isFocused ? '0 0 0 0.2rem rgba(13,110,253,.25)' : 'none',
+                          '&:hover': {
+                            borderColor: '#0d6efd',
+                          },
+                        }),
+                        valueContainer: (base) => ({
+                          ...base,
+                          height: '28px',
+                          padding: '0 6px',
+                        }),
+                        input: (base) => ({
+                          ...base,
+                          margin: 0,
+                          padding: 0,
+                        }),
+                        indicatorsContainer: (base) => ({
+                          ...base,
+                          height: '28px',
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          fontSize: '0.875rem',
+                          zIndex: 9999,
+                        }),
+                      }}
+                    />
+
+
                   </td>
                   <td>
                     <input

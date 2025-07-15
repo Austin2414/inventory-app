@@ -170,43 +170,102 @@ const PackingSlipView: React.FC = () => {
             <thead className="table-light small">
               <tr>
                 <th style={{ width: '2rem' }}>#</th>
-                <th>Material</th>
-                <th>Gross (lb)</th>
-                <th>Tare (lb)</th>
-                <th>Net (lb)</th>
-                <th>Ticket #</th>
-                <th>Remarks</th>
+                <th style={{ minWidth: '100px' }}>Material</th>
+                <th style={{ minWidth: '80px' }}>Gross (lb)</th>
+                <th style={{ minWidth: '80px' }}>Tare (lb)</th>
+                <th style={{ minWidth: '80px' }}>Net (lb)</th>
+                <th style={{ minWidth: '45px' }}>Ticket #</th>
+                {slip.slip_type === 'inbound' && <th style= {{ minWidth: '100px' }}>Remarks</th>}
               </tr>
             </thead>
+
+
             <tbody className="small">
-              {slip.packing_slip_items.map((item, index) => {
-                const gross = item.gross_weight || 0;
-                const tare = item.tare_weight || 0;
-                const net = gross - tare;
+              {Object.entries(
+                slip.packing_slip_items.reduce((groups, item) => {
+                  const key = item.material_name || 'Unknown';
+                  if (!groups[key]) groups[key] = [];
+                  groups[key].push(item);
+                  return groups;
+                }, {} as Record<string, typeof slip.packing_slip_items>)
+              ).map(([materialName, items]) => {
+                const subtotal = items.reduce(
+                  (sum, item) => {
+                    const gross = item.gross_weight || 0;
+                    const tare = item.tare_weight || 0;
+                    const net = gross - tare;
+                    return {
+                      gross: sum.gross + gross,
+                      tare: sum.tare + tare,
+                      net: sum.net + net
+                    };
+                  },
+                  { gross: 0, tare: 0, net: 0 }
+                );
+
                 return (
-                  <tr key={item.id}>
-                    <td>{index + 1}</td>
-                    <td>{item.material_name || '-'}</td>
-                    <td>{formatNumber(gross)}</td>
-                    <td>{formatNumber(tare)}</td>
-                    <td>{formatNumber(net)}</td>
-                    <td>{item.ticket_number || '-'}</td>
-                    <td>{item.remarks || '-'}</td>
-                  </tr>
+                  <React.Fragment key={materialName}>
+                    {items.map((item, index) => {
+                      const gross = item.gross_weight || 0;
+                      const tare = item.tare_weight || 0;
+                      const net = gross - tare;
+                      return (
+                        <tr key={item.id}>
+                          <td>{index + 1}</td>
+                          <td>{item.material_name || '-'}</td>
+                          <td>{formatNumber(gross)}</td>
+                          <td>{formatNumber(tare)}</td>
+                          <td>{formatNumber(net)}</td>
+                          <td>{item.ticket_number || '-'}</td>
+                          {slip.slip_type === 'inbound' && <td>{item.remarks || '-'}</td>}
+                        </tr>
+                      );
+                    })}
+                    {items.length > 1 && (
+                      <tr className="fw-bold text-end text-nowrap">
+                        <td colSpan={2}>Subtotal:</td>
+                        <td>{formatNumber(subtotal.gross)}</td>
+                        <td>{formatNumber(subtotal.tare)}</td>
+                        <td>{formatNumber(subtotal.net)}</td>
+                        <td></td>
+                        {slip.slip_type === 'inbound' && <td></td>}
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
+
+              {/* Grand Total Row */}
+              <tr className="fw-bold text-end text-nowrap">
+                <td colSpan={2}>
+                  Total ({slip.packing_slip_items.length} items):
+                </td>
+                <td>
+                  {formatNumber(
+                    slip.packing_slip_items.reduce((sum, item) => sum + (item.gross_weight || 0), 0)
+                  )}
+                </td>
+                <td>
+                  {formatNumber(
+                    slip.packing_slip_items.reduce((sum, item) => sum + (item.tare_weight || 0), 0)
+                  )}
+                </td>
+                <td>
+                  {formatNumber(
+                    slip.packing_slip_items.reduce((sum, item) => {
+                      const gross = item.gross_weight || 0;
+                      const tare = item.tare_weight || 0;
+                      return sum + (gross - tare);
+                    }, 0)
+                  )}
+                </td>
+                <td></td>
+                {slip.slip_type === 'inbound' && <td></td>}
+              </tr>
             </tbody>
+
+
           </table>
-          <div className="text-end fw-bold small">
-            Total Net Weight:{' '}
-            {formatNumber(
-              slip.packing_slip_items.reduce(
-                (sum, item) => sum + ((item.gross_weight || 0) - (item.tare_weight || 0)),
-                0
-              )
-            )}{' '}
-            lb
-          </div>
         </div>
       </div>
     </div>
