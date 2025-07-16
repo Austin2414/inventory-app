@@ -93,6 +93,8 @@ model reclassificationLog {
   to_material_id   Int
   quantity         Float
   location_id      Int
+  load             String?
+  reason           String?
   timestamp        DateTime @default(now())
   from_material materials @relation("FromMaterial", fields: [from_material_id], references: [id])
   to_material   materials @relation("ToMaterial", fields: [to_material_id], references: [id])

@@ -6,7 +6,14 @@ const router = express.Router();
 
 router.post('/reclassify', async (req, res) => {
   try {
-    const { from_material_id, to_material_id, quantity, location_id } = req.body;
+    const {
+      from_material_id,
+      to_material_id,
+      quantity,
+      location_id,
+      load,
+      reason
+    } = req.body;
 
     const parsedFrom = parseInt(from_material_id);
     const parsedTo = parseInt(to_material_id);
@@ -17,7 +24,6 @@ router.post('/reclassify', async (req, res) => {
       return res.status(400).json({ error: 'Invalid input' });
     }
 
-    // Transactionally move quantity from one material to another
     await prisma.$transaction([
       prisma.inventory.update({
         where: {
@@ -27,7 +33,8 @@ router.post('/reclassify', async (req, res) => {
           }
         },
         data: {
-          quantity: { decrement: parsedQty }
+          quantity: { decrement: parsedQty },
+          last_updated: new Date()
         }
       }),
       prisma.inventory.upsert({
@@ -38,12 +45,14 @@ router.post('/reclassify', async (req, res) => {
           }
         },
         update: {
-          quantity: { increment: parsedQty }
+          quantity: { increment: parsedQty },
+          last_updated: new Date()
         },
         create: {
           material_id: parsedTo,
           location_id: parsedLoc,
-          quantity: parsedQty
+          quantity: parsedQty,
+          last_updated: new Date()
         }
       }),
       prisma.reclassificationLog.create({
@@ -51,7 +60,9 @@ router.post('/reclassify', async (req, res) => {
           from_material_id: parsedFrom,
           to_material_id: parsedTo,
           quantity: parsedQty,
-          location_id: parsedLoc
+          location_id: parsedLoc,
+          load: load || null,
+          reason: reason || null
         }
       })
     ]);
@@ -63,5 +74,6 @@ router.post('/reclassify', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 export default router;

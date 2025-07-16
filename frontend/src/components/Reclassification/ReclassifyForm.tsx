@@ -6,9 +6,11 @@ const ReclassifyForm = () => {
   const [formData, setFormData] = useState({
     from_material_id: '',
     to_material_id: '',
-    quantity: ''
+    quantity: '',
+    load: '',
+    reason: ''
   });
- 
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -31,10 +33,18 @@ const ReclassifyForm = () => {
         from_material_id: Number(formData.from_material_id),
         to_material_id: Number(formData.to_material_id),
         quantity: Number(formData.quantity),
-        location_id: 1
+        location_id: 1, // You can replace this with a dynamic location ID if needed
+        load: formData.load,
+        reason: formData.reason
       });
       setSuccess(true);
-      setFormData({ from_material_id: '', to_material_id: '', quantity: '' });
+      setFormData({
+        from_material_id: '',
+        to_material_id: '',
+        quantity: '',
+        load: '',
+        reason: ''
+      });
     } catch (err) {
       setError('Failed to reclassify inventory. Please try again.');
       console.error(err);
@@ -96,6 +106,30 @@ const ReclassifyForm = () => {
               min="0"
               step="0.01"
               required
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Load (optional)</label>
+            <input 
+              type="text"
+              name="load"
+              value={formData.load}
+              onChange={handleChange}
+              className="form-control"
+              placeholder="e.g. Liberty Recycling #25/Public"
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Reason (optional)</label>
+            <input 
+              type="text"
+              name="reason"
+              value={formData.reason}
+              onChange={handleChange}
+              className="form-control"
+              placeholder="e.g. Upgrade/Downgrade"
             />
           </div>
 

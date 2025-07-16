@@ -12,13 +12,27 @@ async function main() {
 
   // Add materials
   await prisma.materials.createMany({
-    data: [
-      { name: 'Shred', category: 'ferrous', unit: 'lb' },
-      { name: 'HMS', category: 'ferrous', unit: 'lb' },
-      { name: '#1 Copper', category: 'non-ferrous', unit: 'lb' },
-      { name: 'Aluminum Cans', category: 'non-ferrous', unit: 'lb' }
-    ]
-  });
+  data: [
+    // Non-ferrous
+    { name: '#1 copper', category: 'Non-ferrous', unit: 'lb' },
+    { name: '#2 copper', category: 'Non-ferrous', unit: 'lb' },
+    { name: 'Old sheet', category: 'Non-ferrous', unit: 'lb' },
+    { name: 'MLC', category: 'Non-ferrous', unit: 'lb' },
+    { name: 'Electric Motors', category: 'Non-ferrous', unit: 'lb' },
+    { name: '#1 ICW (75%)', category: 'Non-ferrous', unit: 'lb' },
+    { name: '#2 ICW (50%)', category: 'Non-ferrous', unit: 'lb' },
+
+    // Ferrous
+    { name: 'Shreddables', category: 'Ferrous', unit: 'lb' },
+    { name: 'MIXED1&2', category: 'Ferrous', unit: 'lb' },
+    { name: 'Iron', category: 'Ferrous', unit: 'lb' },
+    { name: 'Cast Iron', category: 'Ferrous', unit: 'lb' },
+    { name: 'Automobiles', category: 'Ferrous', unit: 'lb' },
+    { name: 'P&S', category: 'Ferrous', unit: 'lb' }
+  ],
+  skipDuplicates: true
+});
+
 
   console.log('✅ Seed complete');
 }
