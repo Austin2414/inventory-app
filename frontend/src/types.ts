@@ -87,3 +87,26 @@ export interface ReclassifyFormData {
   quantity: string;
   location_id: string;
 }
+
+// Audit Log
+export interface AuditLogEntry {
+  timestamp: string;
+  change: number;
+  source: 'Packing Slip' | 'Reclassification' | 'Manual Adjustment';
+  packingSlipId?: number;
+  remarks?: string | null;
+  reason?: string | null;
+  load?: string | null;
+  direction?: 'From' | 'To';
+  unit?: string;
+  movedTo?: string;
+  movedFrom?: string;
+}
+
+export interface InventoryItem {
+  id: number;
+  quantity: number;
+  last_updated: string;
+  materials: Material;
+  locations?: { id: number };
+}

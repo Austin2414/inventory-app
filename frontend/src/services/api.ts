@@ -76,4 +76,8 @@ export const createInventoryAdjustment = (data: {
   reason?: string;
 }) => api.post('/inventory-adjustments', data);
 
+// Audit Log API
+export const getAuditLog = (locationId: number, materialId: number) =>
+  api.get(`/inventory/${locationId}/material/${materialId}/audit-log`);
+
 export default api;

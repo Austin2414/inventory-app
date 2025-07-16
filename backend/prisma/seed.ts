@@ -14,8 +14,8 @@ async function main() {
   await prisma.materials.createMany({
   data: [
     // Non-ferrous
-    { name: '#1 copper', category: 'Non-ferrous', unit: 'lb' },
-    { name: '#2 copper', category: 'Non-ferrous', unit: 'lb' },
+    { name: '#1 Copper', category: 'Non-ferrous', unit: 'lb' },
+    { name: '#2 Copper', category: 'Non-ferrous', unit: 'lb' },
     { name: 'Old sheet', category: 'Non-ferrous', unit: 'lb' },
     { name: 'MLC', category: 'Non-ferrous', unit: 'lb' },
     { name: 'Electric Motors', category: 'Non-ferrous', unit: 'lb' },
