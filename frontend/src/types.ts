@@ -101,6 +101,7 @@ export interface AuditLogEntry {
   unit?: string;
   movedTo?: string;
   movedFrom?: string;
+  slipType?: 'Inbound' | 'Outbound';
 }
 
 export interface InventoryItem {

@@ -72,6 +72,11 @@ const packingSlipLogs = Object.entries(groupedBySlip).map(([slipId, items]) => {
       packingSlipId: Number(slipId),
       remarks: null,
       unit: items[0].material.unit || 'lb',
+      slipType:
+        items[0].packing_slips.slip_type === 'outbound'
+          ? 'Outbound'
+          : 'Inbound',
+
     }
   );
 });
@@ -106,8 +111,11 @@ const packingSlipLogs = Object.entries(groupedBySlip).map(([slipId, items]) => {
           change,
           'Reclassification',
           {
-            reason: entry.reason || null,
-            ...(isFrom
+            load: entry.load || null,
+          reason: entry.reason || null,
+          direction: isFrom ? 'From' : 'To',
+          unit: material?.unit ?? 'lb',
+          ...(isFrom
               ? { movedTo: movedMaterialName }
               : { movedFrom: movedMaterialName }),
           }

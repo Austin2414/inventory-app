@@ -347,55 +347,78 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
               {formData.items.map((item, index) => (
                 <tr key={index}>
                   <td>{index + 1}</td>
-                  <td>
-                    <Select
-                      classNamePrefix="react-select"
-                      value={materials
-                        .map(mat => ({ value: String(mat.id), label: mat.name }))
-                        .find(opt => opt.value === String(item.material_id))}
-                      onChange={(selectedOption) =>
-                        handleItemChange(index, 'material_id', selectedOption?.value || '')
-                      }
-                      options={materials.map(mat => ({ value: String(mat.id), label: mat.name }))}
-                      isDisabled={editData?.status === 'completed'}
-                      placeholder="Select material..."
-                      styles={{
-                        control: (base, state) => ({
-                          ...base,
-                          minHeight: '28px',
-                          height: '28px',
-                          fontSize: '0.875rem',
-                          borderRadius: '6px',
-                          borderColor: state.isFocused ? '#0d6efd' : '#ced4da',
-                          boxShadow: state.isFocused ? '0 0 0 0.2rem rgba(13,110,253,.25)' : 'none',
-                          '&:hover': {
-                            borderColor: '#0d6efd',
-                          },
-                        }),
-                        valueContainer: (base) => ({
-                          ...base,
-                          height: '28px',
-                          padding: '0 6px',
-                        }),
-                        input: (base) => ({
-                          ...base,
-                          margin: 0,
-                          padding: 0,
-                        }),
-                        indicatorsContainer: (base) => ({
-                          ...base,
-                          height: '28px',
-                        }),
-                        menu: (base) => ({
-                          ...base,
-                          fontSize: '0.875rem',
-                          zIndex: 9999,
-                        }),
-                      }}
-                    />
-
-
+                  <td style={{ overflow: 'visible' }}>
+                    <div style={{ position: 'relative', zIndex: 10 }}>
+                      <Select
+                        classNamePrefix="react-select"
+                        menuPortalTarget={document.body}
+                        menuPosition="fixed"
+                        menuShouldScrollIntoView={false}
+                        value={materials
+                          .map(mat => ({ value: String(mat.id), label: mat.name }))
+                          .find(opt => opt.value === String(item.material_id))}
+                        onChange={(selectedOption) =>
+                          handleItemChange(index, 'material_id', selectedOption?.value || '')
+                        }
+                        options={materials.map(mat => ({ value: String(mat.id), label: mat.name }))}
+                        isDisabled={editData?.status === 'completed'}
+                        placeholder="Select material..."
+                        filterOption={(option, inputValue) =>
+                          option.label.toLowerCase().includes(inputValue.toLowerCase())
+                        }
+                        styles={{
+                          menuPortal: base => ({ ...base, zIndex: 9999 }),
+                          control: (base, state) => ({
+                            ...base,
+                            minHeight: '32px',
+                            fontSize: '0.875rem',
+                            borderRadius: '6px',
+                            borderColor: state.isFocused ? '#0d6efd' : '#ced4da',
+                            boxShadow: state.isFocused ? '0 0 0 0.2rem rgba(13,110,253,.25)' : 'none',
+                            '&:hover': {
+                              borderColor: '#0d6efd',
+                            },
+                          }),
+                          valueContainer: base => ({
+                            ...base,
+                            padding: '0 8px',
+                          }),
+                          input: base => ({
+                            ...base,
+                            margin: 0,
+                            padding: 0,
+                          }),
+                          indicatorsContainer: base => ({
+                            ...base,
+                            height: '32px',
+                          }),
+                          menu: base => ({
+                            ...base,
+                            fontSize: '0.8rem',
+                            maxHeight: '220px',
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                            border: '1px solid #dee2e6',
+                            boxShadow: '0 4px 8px rgba(0,0,0,0.05)',
+                          }),
+                          option: (base, { isFocused, isSelected }) => ({
+                            ...base,
+                            padding: '6px 10px',
+                            fontSize: '0.8rem',
+                            backgroundColor: isSelected
+                              ? '#0d6efd'
+                              : isFocused
+                              ? '#e9f5ff'
+                              : 'white',
+                            color: isSelected ? 'white' : '#212529',
+                            cursor: 'pointer',
+                          }),
+                        }}
+                      />
+                    </div>
                   </td>
+
+
                   <td>
                     <input
                       type="number"

@@ -1,8 +1,8 @@
 // src/components/Inventory/InventoryList.tsx
 import React, { useEffect, useState } from 'react';
-import { getInventory, getAuditLog } from '../../services/api'; // we'll add getAuditLog
+import { getInventory, getAuditLog } from '../../services/api';
 import { Modal, Button, Spinner } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AuditLogEntry, InventoryItem } from '../../types';
 
 const InventoryList = () => {
@@ -12,6 +12,8 @@ const InventoryList = () => {
   const [auditError, setAuditError] = useState<string | null>(null);
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<InventoryItem | null>(null);
+
+  const navigate = useNavigate();
 
   const formatDate = (dateString: string | Date) => {
     const date = new Date(dateString);
@@ -44,10 +46,7 @@ const InventoryList = () => {
     setAuditError(null);
 
     try {
-      // Assuming you have locationId available, else default to 1
-      // You may need to adjust this to get locationId from your state or item
       const locationId = item.locations?.id ?? 1;
-
       const res = await getAuditLog(locationId, item.materials.id);
       setAuditLog(res.data);
     } catch (err) {
@@ -59,8 +58,27 @@ const InventoryList = () => {
     }
   };
 
+  const handlePackingSlipClick = (slipId: number) => {
+    navigate(`/packing-slips/${slipId}`);
+  };
+
   return (
     <>
+      <style>
+        {`
+          .audit-clickable {
+            color: #343a40;
+            cursor: pointer;
+            font-weight: 500;
+            text-decoration: none;
+          }
+          .audit-clickable:hover {
+            text-decoration: underline;
+            color: #212529;
+          }
+        `}
+      </style>
+
       <div className="card shadow">
         <div className="card-header bg-primary text-white">
           <h3 className="mb-0">📦 Current Inventory</h3>
@@ -86,9 +104,9 @@ const InventoryList = () => {
                 inventory.map((item) => (
                   <tr key={item.id}>
                     <td
-                      style={{ cursor: 'pointer', color: '#0d6efd', textDecoration: 'underline' }}
                       onClick={() => handleMaterialClick(item)}
                       title="Click to view audit log"
+                      className="audit-clickable"
                     >
                       {item.materials.name}
                     </td>
@@ -105,7 +123,6 @@ const InventoryList = () => {
         </div>
       </div>
 
-      {/* Audit Log Modal */}
       <Modal show={showAuditModal} onHide={() => setShowAuditModal(false)} size="lg" centered scrollable>
         <Modal.Header closeButton>
           <Modal.Title>
@@ -135,55 +152,71 @@ const InventoryList = () => {
                 {auditLog.map((entry, i) => (
                   <tr key={i} style={{ cursor: 'default' }}>
                     <td style={{ whiteSpace: 'nowrap' }}>{formatDate(entry.timestamp)}</td>
-                    <td className="text-end" style={{ fontWeight: '600' }}>
-                      {entry.change > 0 ? `+${entry.change.toLocaleString()}` : entry.change.toLocaleString()} {entry.unit ?? 'lb'}
+                    <td className="text-end fw-semibold">
+                     {(() => {
+                        const isPackingSlip = entry.source === 'Packing Slip';
+                        const isOutbound = isPackingSlip && entry.slipType === 'Outbound'; // ✅ use slipType not direction
+                        const isPositive = entry.change > 0;
+
+                        const displayValue = (isOutbound && isPositive)
+                          ? `-${entry.change.toLocaleString()}`
+                          : (isPositive ? `+${entry.change.toLocaleString()}` : entry.change.toLocaleString());
+
+                        return `${displayValue} ${entry.unit ?? 'lb'}`;
+                      })()}
+
+
                     </td>
                     <td>{entry.source}</td>
                     <td>
                       {entry.source === 'Packing Slip' && entry.packingSlipId ? (
-                        <Link
-                          to={`/packing-slips/${entry.packingSlipId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary text-decoration-none"
-                          style={{ fontWeight: 500 }}
+                        <span
+                          onClick={() => handlePackingSlipClick(entry.packingSlipId!)}
+                          style={{
+                            color: '#343a40',
+                            cursor: 'pointer',
+                            textDecoration: 'none',
+                            fontWeight: 500,
+                          }}
+                          className="audit-clickable"
                           onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
                           onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
                         >
                           Slip #{entry.packingSlipId}
-                        </Link>
+                        </span>
                       ) : entry.source === 'Reclassification' ? (
                         <>
-                          {entry.reason && (
-                            <div className="text-muted small">Reason: {entry.reason}</div>
-                          )}
-
-                          {entry.load && (
-                            <div className="text-muted small">Load: {entry.load}</div>
-                          )}
-
-                          {entry.movedTo && (
+                          
+                          {entry.load && <div className="text-muted small">Load: {entry.load}</div>}
+                          {entry.reason && <div className="text-muted small">Reason: {entry.reason}</div>}
+                          {entry.direction === 'From' && entry.movedTo && (
                             <div className="text-muted small">
                               → Moved to: <strong>{entry.movedTo}</strong>
                             </div>
                           )}
-
-                          {entry.movedFrom && (
+                          {entry.direction === 'To' && entry.movedFrom && (
                             <div className="text-muted small">
                               ← Moved from: <strong>{entry.movedFrom}</strong>
                             </div>
                           )}
-
                         </>
+                      ) : entry.source === 'Manual Adjustment' ? (
+                        entry.reason ? (
+                          <div className="text-muted small">Reason: {entry.reason}</div>
+                        ) : (
+                          <div className="text-muted small fst-italic">No reason provided</div>
+                        )
+                      ) : entry.remarks ? (
+                        <div className="text-muted small">Remarks: {entry.remarks}</div>
                       ) : (
-                        <span>{entry.remarks ?? '-'}</span>
+                        '-'
                       )}
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
 
+            </table>
           )}
         </Modal.Body>
         <Modal.Footer>
