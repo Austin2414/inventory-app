@@ -149,72 +149,75 @@ const InventoryList = () => {
                 </tr>
               </thead>
               <tbody>
-                {auditLog.map((entry, i) => (
-                  <tr key={i} style={{ cursor: 'default' }}>
-                    <td style={{ whiteSpace: 'nowrap' }}>{formatDate(entry.timestamp)}</td>
-                    <td className="text-end fw-semibold">
-                     {(() => {
-                        const isPackingSlip = entry.source === 'Packing Slip';
-                        const isOutbound = isPackingSlip && entry.slipType === 'Outbound'; // ✅ use slipType not direction
-                        const isPositive = entry.change > 0;
+                {auditLog.map((entry, i) => {
+                  const isPackingSlip = entry.source === 'Packing Slip';
+                  const isOutbound = isPackingSlip && entry.slipType === 'Outbound';
+                  const isPositive = entry.change > 0;
 
-                        const displayValue = (isOutbound && isPositive)
-                          ? `-${entry.change.toLocaleString()}`
-                          : (isPositive ? `+${entry.change.toLocaleString()}` : entry.change.toLocaleString());
+                  const isReversal = entry.reason?.toLowerCase().includes('reversal');
+                  const displayValue =
+                    isOutbound && isPositive
+                      ? `-${entry.change.toLocaleString()}`
+                      : isPositive
+                      ? `+${entry.change.toLocaleString()}`
+                      : entry.change.toLocaleString();
 
-                        return `${displayValue} ${entry.unit ?? 'lb'}`;
-                      })()}
-
-
-                    </td>
-                    <td>{entry.source}</td>
-                    <td>
-                      {entry.source === 'Packing Slip' && entry.packingSlipId ? (
-                        <span
-                          onClick={() => handlePackingSlipClick(entry.packingSlipId!)}
-                          style={{
-                            color: '#343a40',
-                            cursor: 'pointer',
-                            textDecoration: 'none',
-                            fontWeight: 500,
-                          }}
-                          className="audit-clickable"
-                          onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
-                          onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
-                        >
-                          Slip #{entry.packingSlipId}
-                        </span>
-                      ) : entry.source === 'Reclassification' ? (
-                        <>
-                          
-                          {entry.load && <div className="text-muted small">Load: {entry.load}</div>}
-                          {entry.reason && <div className="text-muted small">Reason: {entry.reason}</div>}
-                          {entry.direction === 'From' && entry.movedTo && (
-                            <div className="text-muted small">
-                              → Moved to: <strong>{entry.movedTo}</strong>
-                            </div>
-                          )}
-                          {entry.direction === 'To' && entry.movedFrom && (
-                            <div className="text-muted small">
-                              ← Moved from: <strong>{entry.movedFrom}</strong>
-                            </div>
-                          )}
-                        </>
-                      ) : entry.source === 'Manual Adjustment' ? (
-                        entry.reason ? (
-                          <div className="text-muted small">Reason: {entry.reason}</div>
+                  return (
+                    <tr key={i} style={{ cursor: 'default' }} className={isReversal ? 'text-danger' : ''}>
+                      <td style={{ whiteSpace: 'nowrap' }}>{formatDate(entry.timestamp)}</td>
+                      <td className="text-end fw-semibold">
+                        {`${displayValue} ${entry.unit ?? 'lb'}`}
+                      </td>
+                      <td>{entry.source}</td>
+                      <td>
+                        {entry.source === 'Packing Slip' && entry.packingSlipId ? (
+                          <span
+                            onClick={() => handlePackingSlipClick(entry.packingSlipId!)}
+                            style={{
+                              color: isReversal ? '#dc3545' : '#343a40', // red for reversal
+                              cursor: 'pointer',
+                              textDecoration: 'none',
+                              fontWeight: 500,
+                              fontStyle: isReversal ? 'italic' : 'normal',
+                            }}
+                            className="audit-clickable"
+                            onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                            onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                          >
+                            {isReversal ? `Reversal: Slip #${entry.packingSlipId}` : `Slip #${entry.packingSlipId}`}
+                          </span>
+                        ) : entry.source === 'Reclassification' ? (
+                          <>
+                            {entry.load && <div className="text-muted small">Load: {entry.load}</div>}
+                            {entry.reason && <div className="text-muted small">Reason: {entry.reason}</div>}
+                            {entry.direction === 'From' && entry.movedTo && (
+                              <div className="text-muted small">
+                                → Moved to: <strong>{entry.movedTo}</strong>
+                              </div>
+                            )}
+                            {entry.direction === 'To' && entry.movedFrom && (
+                              <div className="text-muted small">
+                                ← Moved from: <strong>{entry.movedFrom}</strong>
+                              </div>
+                            )}
+                          </>
+                        ) : entry.source === 'Manual Adjustment' ? (
+                          entry.reason ? (
+                            <div className="text-muted small">Reason: {entry.reason}</div>
+                          ) : (
+                            <div className="text-muted small fst-italic">No reason provided</div>
+                          )
+                        ) : entry.remarks ? (
+                          <div className="text-muted small">Remarks: {entry.remarks}</div>
                         ) : (
-                          <div className="text-muted small fst-italic">No reason provided</div>
-                        )
-                      ) : entry.remarks ? (
-                        <div className="text-muted small">Remarks: {entry.remarks}</div>
-                      ) : (
-                        '-'
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                          '-'
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
+
 
             </table>
           )}

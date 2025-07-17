@@ -342,36 +342,69 @@ router.patch('/:id', handle(async (req, res) => {
   res.json(transformPackingSlip(final!));
 }));
 
-router.delete('/:id', handle(async (req, res) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ error: "Invalid packing slip ID" });
+// DELETE /packing-slips/:id
+router.delete('/:id', async (req, res) => {
+  const slipId = parseInt(req.params.id);
+  if (isNaN(slipId)) return res.status(400).json({ error: 'Invalid ID' });
 
-  // Fetch the slip with items to check status and reverse inventory
-  const slip = await prisma.packing_slips.findUnique({
-    where: { id },
-    include: {
-      packing_slip_items: { include: { material: true } }
+  try {
+    const slip = await prisma.packing_slips.findUnique({
+      where: { id: slipId },
+      include: {
+        packing_slip_items: true,
+        location: true,
+      },
+    });
+
+    if (!slip) return res.status(404).json({ error: 'Packing slip not found' });
+
+    const locationId = slip.location_id;
+
+    // Loop through each item to reverse changes
+    for (const item of slip.packing_slip_items) {
+      const netWeight = item.gross_weight - item.tare_weight;
+
+      // Reverse the original inventory change
+      const inventoryChange = slip.slip_type === 'Inbound' ? -netWeight : netWeight;
+
+      await prisma.inventory.updateMany({
+        where: {
+          material_id: item.material_id,
+          location_id: locationId,
+        },
+        data: {
+          quantity: { decrement: inventoryChange },
+        },
+      });
+
+      await prisma.inventoryAdjustment.create({
+        data: {
+          material_id: item.material_id,
+          location_id: locationId,
+          change: -inventoryChange, // audit log entry should match the inventory delta
+          reason: `Reversal: Deleted Packing Slip #${slip.id}`,
+        },
+      });
     }
-  });
 
-  if (!slip) return res.status(404).json({ error: "Packing slip not found" });
 
-    console.log("🧾 Deleting slip ID:", id, "with status:", slip.status);
-    console.log("🧾 Items:", slip.packing_slip_items);
+    // Delete items first (due to foreign key)
+    await prisma.packing_slip_items.deleteMany({
+      where: { packing_slip_id: slipId },
+    });
 
-    if (slip.status === 'completed') {
-      console.log("♻️ Reversing inventory...");
-      await reverseInventory(transformPackingSlip(slip));
+    // Then delete the slip
+    await prisma.packing_slips.delete({
+      where: { id: slipId },
+    });
+
+    res.json({ message: 'Packing slip deleted and reversal recorded.' });
+  } catch (err) {
+    console.error('Error deleting packing slip:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
+});
 
-  
-
-  // 🚮 Delete related items then the slip itself
-  await prisma.packing_slip_items.deleteMany({ where: { packing_slip_id: id } });
-  await prisma.packing_slips.delete({ where: { id } });
-
-  res.status(204).end();
-}));
 
 
 export default router;
