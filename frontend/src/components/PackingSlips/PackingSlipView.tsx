@@ -120,6 +120,13 @@ const PackingSlipView: React.FC = () => {
       </div>
 
       {/* Printable Section */}
+      {slip.deleted_at && (
+        <div className="alert alert-danger small d-print-none">
+          This packing slip was deleted on {formatDate(slip.deleted_at)}.
+          It remains viewable for audit purposes but cannot be modified.
+        </div>
+      )}
+
       <div className="border rounded bg-white p-2 shadow-sm" ref={slipRef}>
         {/* Header */}
         <div className="mb-3 border-bottom pb-2">
@@ -133,13 +140,16 @@ const PackingSlipView: React.FC = () => {
               <div className="text-muted small">{formatDate(slip.date_time)}</div>
             </div>
             <div className="text-end">
-              <div className="badge bg-secondary me-2">{slip.slip_type?.toUpperCase()}</div>
-              <div
-                className={`badge ${
-                  slip.status === 'completed' ? 'bg-success' : 'bg-warning text-dark'
-                }`}
-              >
-                {slip.status?.toUpperCase()}
+              <div className="d-flex gap-2 flex-wrap justify-content-end">
+                <div className="badge bg-secondary">{slip.slip_type?.toUpperCase()}</div>
+                <div className={`badge ${slip.status === 'completed' ? 'bg-success' : 'bg-warning text-dark'}`}>
+                  {slip.status?.toUpperCase()}
+                </div>
+                {slip.deleted_at && (
+                  <div className="badge bg-danger text-light">
+                    DELETED
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -272,9 +282,16 @@ const PackingSlipView: React.FC = () => {
 
     {/* Delete button - hidden on print */}
     <div className="d-print-none p-2">
-      <button className="btn btn-outline-danger btn-sm" onClick={handleDelete}>
-        Delete Packing Slip
-      </button>
+      {!slip.deleted_at ? (
+        <button className="btn btn-outline-danger btn-sm" onClick={handleDelete}>
+          Delete Packing Slip
+        </button>
+      ) : (
+        <button className="btn btn-outline-secondary btn-sm" disabled>
+          Already Deleted
+        </button>
+      )}
+
     </div>
   </div>
 );

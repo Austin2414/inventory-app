@@ -67,6 +67,7 @@ model packing_slips {
   po_number      String?
   seal_number    String?
   location_id    Int
+  deleted_at     DateTime?
 
   location           locations            @relation(fields: [location_id], references: [id])
   packing_slip_items packing_slip_items[]
@@ -110,6 +111,7 @@ model inventoryAdjustment {
   change       Float
   reason       String?
   timestamp    DateTime @default(now())
+  snapshot_quantity Float?
 
   material     materials @relation(fields: [material_id], references: [id])
   location     locations @relation(fields: [location_id], references: [id])

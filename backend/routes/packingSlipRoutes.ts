@@ -33,6 +33,7 @@ interface PackingSlip {
     remarks: string;
     ticket_number: string;
   }[];
+  deleted_at?: Date | null;
 }
 
 interface RawPackingSlipItem {
@@ -59,6 +60,8 @@ interface RawPackingSlip {
   po_number: string | null;
   seal_number: string | null;
   date_time: Date;
+  deleted_at?: Date | null;
+
   packing_slip_items?: RawPackingSlipItem[];
   location?: {
     name: string;
@@ -77,6 +80,7 @@ function transformPackingSlip(slip: RawPackingSlip): PackingSlip {
       address: slip.location.address ?? undefined
     } : undefined,
     status: slip.status,
+    deleted_at: slip.deleted_at,
     from_name: slip.from_name,
     to_name: slip.to_name,
     truck_number: slip.truck_number,
@@ -145,10 +149,23 @@ async function reverseInventory(slip: PackingSlip) {
   }
 }
 
+async function getCurrentInventory(material_id: number, location_id: number): Promise<number> {
+  const inv = await prisma.inventory.findUnique({
+    where: {
+      uniq_material_location: { material_id, location_id }
+    }
+  });
+  return inv?.quantity ?? 0;
+}
+
+
 // Routes
 
 router.get('/', handle(async (req, res) => {
   const slips = await prisma.packing_slips.findMany({
+    where: {
+      deleted_at: null
+    },
     include: {
       packing_slip_items: { include: { material: true } }
     },
@@ -160,7 +177,10 @@ router.get('/', handle(async (req, res) => {
 router.get('/status/:status', handle(async (req, res) => {
   const { status } = req.params;
   const slips = await prisma.packing_slips.findMany({
-    where: { status },
+    where: { 
+      status,
+    deleted_at: null
+   },
     include: {
       packing_slip_items: { include: { material: true } },
       location: true
@@ -171,6 +191,9 @@ router.get('/status/:status', handle(async (req, res) => {
 
 router.get('/all', handle(async (req, res) => {
   const slips = await prisma.packing_slips.findMany({
+    where: {
+      deleted_at: null  // ← Exclude soft-deleted slips
+    },
     include: {
       packing_slip_items: { include: { material: true } },
       location: true
@@ -183,7 +206,7 @@ router.get('/:id', handle(async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: "Invalid packing slip ID" });
 
-  const slip = await prisma.packing_slips.findUnique({
+  const slip = await prisma.packing_slips.findFirst({
     where: { id },
     include: {
       packing_slip_items: {
@@ -200,6 +223,21 @@ router.get('/:id', handle(async (req, res) => {
   res.json(transformPackingSlip(slip));
 }));
 
+// Admin View deleted slips
+router.get('/deleted', handle(async (req, res) => {
+  const slips = await prisma.packing_slips.findMany({
+    where: {
+      deleted_at: { not: null }
+    },
+    include: {
+      packing_slip_items: { include: { material: true } },
+      location: true
+    },
+    orderBy: { deleted_at: 'desc' }
+  });
+
+  res.json(slips.map(transformPackingSlip));
+}));
 
 router.post('/', handle(async (req, res) => {
   const body = req.body;
@@ -360,50 +398,53 @@ router.delete('/:id', async (req, res) => {
 
     const locationId = slip.location_id;
 
-    // Loop through each item to reverse changes
-    for (const item of slip.packing_slip_items) {
-      const netWeight = item.gross_weight - item.tare_weight;
+    // Reverse inventory if completed
+    if (slip.status === 'completed') {
+      for (const item of slip.packing_slip_items) {
+        const netWeight = item.gross_weight - item.tare_weight;
+        const inventoryChange = slip.slip_type === 'Inbound' ? -netWeight : netWeight;
 
-      // Reverse the original inventory change
-      const inventoryChange = slip.slip_type === 'Inbound' ? -netWeight : netWeight;
+        await prisma.inventory.updateMany({
+          where: {
+            material_id: item.material_id,
+            location_id: locationId,
+          },
+          data: {
+            quantity: { decrement: inventoryChange },
+          },
+        });
 
-      await prisma.inventory.updateMany({
-        where: {
-          material_id: item.material_id,
-          location_id: locationId,
-        },
-        data: {
-          quantity: { decrement: inventoryChange },
-        },
-      });
-
-      await prisma.inventoryAdjustment.create({
-        data: {
-          material_id: item.material_id,
-          location_id: locationId,
-          change: -inventoryChange, // audit log entry should match the inventory delta
-          reason: `Reversal: Deleted Packing Slip #${slip.id}`,
-        },
-      });
+        await prisma.inventoryAdjustment.create({
+          data: {
+            material_id: item.material_id,
+            location_id: locationId,
+            change: -inventoryChange,
+            reason: `Reversal: Deleted Packing Slip #${slip.id}`,
+            snapshot_quantity: await getCurrentInventory(item.material_id, locationId)
+          },
+        });
+      }
     }
 
-
-    // Delete items first (due to foreign key)
-    await prisma.packing_slip_items.deleteMany({
-      where: { packing_slip_id: slipId },
-    });
-
-    // Then delete the slip
-    await prisma.packing_slips.delete({
-      where: { id: slipId },
-    });
-
-    res.json({ message: 'Packing slip deleted and reversal recorded.' });
+    // DRAFT slips can be fully deleted
+    if (slip.status === 'draft') {
+      await prisma.packing_slip_items.deleteMany({ where: { packing_slip_id: slipId } });
+      await prisma.packing_slips.delete({ where: { id: slipId } });
+      return res.json({ message: 'Draft packing slip permanently deleted.' });
+    } else {
+      // Completed slips are soft-deleted
+      await prisma.packing_slips.update({
+        where: { id: slipId },
+        data: { deleted_at: new Date() }
+      });
+      return res.json({ message: 'Packing slip soft-deleted and inventory reversed.' });
+    }
   } catch (err) {
     console.error('Error deleting packing slip:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 
 

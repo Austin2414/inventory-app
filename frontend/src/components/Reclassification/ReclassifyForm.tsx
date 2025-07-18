@@ -125,7 +125,7 @@ const ReclassifyForm = () => {
               value={formData.quantity}
               onChange={handleChange}
               className="form-control"
-              min="0"
+              min="1"
               step="0.01"
               required
               style={{ fontSize: '1rem' }}
@@ -174,4 +174,3 @@ const ReclassifyForm = () => {
 };
 
 export default ReclassifyForm;
-

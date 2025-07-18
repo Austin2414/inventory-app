@@ -65,6 +65,7 @@ export interface PackingSlip {
   user_id?: number;
   location_name?: string;
   location?: Location;
+  deleted_at?: string | null;
 }
 
 // Form data types
@@ -102,6 +103,7 @@ export interface AuditLogEntry {
   movedTo?: string;
   movedFrom?: string;
   slipType?: 'Inbound' | 'Outbound';
+  snapshot_quantity?: number;
 }
 
 export interface InventoryItem {

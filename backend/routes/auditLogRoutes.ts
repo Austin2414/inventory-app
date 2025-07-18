@@ -40,7 +40,13 @@ router.get('/:locationId/material/:materialId/audit-log', async (req, res) => {
 
     // --- PACKING SLIPS (Grouped by Slip) ---
 const packingSlipItems = await prisma.packing_slip_items.findMany({
-  where: { material_id: materialId },
+  where: { 
+    material_id: materialId, 
+    packing_slips: {
+      location_id: locationId,
+      status: 'completed',
+    }
+  },
   include: {
     packing_slips: true,
     material: true,
@@ -64,22 +70,23 @@ const packingSlipLogs = Object.entries(groupedBySlip).map(([slipId, items]) => {
     0
   );
 
+  // Adjust sign for outbound slips:
+  const isOutbound = items[0].packing_slips.slip_type === 'outbound';
+  const adjustedChange = isOutbound ? -totalNet : totalNet;
+
   return formatEntry(
     items[0].packing_slips.date_time,
-    totalNet,
+    adjustedChange,
     'Packing Slip',
     {
       packingSlipId: Number(slipId),
       remarks: null,
       unit: items[0].material.unit || 'lb',
-      slipType:
-        items[0].packing_slips.slip_type === 'outbound'
-          ? 'Outbound'
-          : 'Inbound',
-
+      slipType: isOutbound ? 'Outbound' : 'Inbound',
     }
   );
 });
+
 
 
 
@@ -138,12 +145,55 @@ const packingSlipLogs = Object.entries(groupedBySlip).map(([slipId, items]) => {
       })
     );
 
+    // --- FETCH CURRENT INVENTORY FOR MATERIAL + LOCATION ---
+    const currentInventory = await prisma.inventory.findUnique({
+      where: {
+        uniq_material_location: {
+          material_id: materialId,
+          location_id: locationId,
+        },
+      },
+      select: {
+        quantity: true,
+      },
+    });
+
+    let runningInventory = currentInventory?.quantity ?? 0;
+
+
     // --- MERGE & SORT ---
-    const fullLog = [...packingSlipLogs, ...reclassificationLogs, ...adjustmentEntries].sort(
+    const fullLogUnsorted = [
+      ...packingSlipLogs,
+      ...reclassificationLogs,
+      ...adjustmentEntries,
+    ];
+
+    // Sort descending by timestamp (latest first)
+    const sortedLog = fullLogUnsorted.sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
 
-    res.json(fullLog);
+    // Add running snapshot of inventory AFTER each change
+    const fullLogWithSnapshots = sortedLog.map(entry => {
+      console.log(`Processing audit entry: Timestamp=${entry.timestamp} Change=${entry.change}`);
+      console.log(`Before applying change, runningInventory=${runningInventory}`);
+
+      const entryWithSnapshot = {
+        ...entry,
+        snapshot_quantity: runningInventory,
+      };
+
+      // Reverse the change to simulate what inventory was before this entry
+      runningInventory -= entry.change;
+
+      console.log('After:', runningInventory);
+
+      return entryWithSnapshot;
+    });
+
+
+
+    res.json(fullLogWithSnapshots);
   } catch (error) {
     console.error('Error fetching audit log:', error);
     res.status(500).json({ error: 'Failed to fetch audit log' });
