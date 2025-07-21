@@ -162,17 +162,20 @@ async function getCurrentInventory(material_id: number, location_id: number): Pr
 // Routes
 
 router.get('/', handle(async (req, res) => {
+  const includeDeleted = req.query.includeDeleted === 'true';
+
   const slips = await prisma.packing_slips.findMany({
-    where: {
-      deleted_at: null
-    },
+    where: includeDeleted ? {} : { deleted_at: null },
     include: {
-      packing_slip_items: { include: { material: true } }
+      packing_slip_items: { include: { material: true } },
+      location: true
     },
     orderBy: { id: 'desc' }
   });
+
   res.json(slips.map(transformPackingSlip));
 }));
+
 
 router.get('/status/:status', handle(async (req, res) => {
   const { status } = req.params;

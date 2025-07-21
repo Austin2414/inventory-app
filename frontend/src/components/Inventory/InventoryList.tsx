@@ -4,6 +4,8 @@ import { getInventory, getAuditLog } from '../../services/api';
 import { Modal, Button, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { AuditLogEntry, InventoryItem } from '../../types';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 const InventoryList = () => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -12,6 +14,18 @@ const InventoryList = () => {
   const [auditError, setAuditError] = useState<string | null>(null);
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<InventoryItem | null>(null);
+
+  // Add sort/search/filter for audit log
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditSortField, setAuditSortField] = useState<'timestamp' | 'change'>('timestamp');
+  const [auditSortDir, setAuditSortDir] = useState<'asc' | 'desc'>('desc');
+  const [auditStartDate, setAuditStartDate] = useState<Date | null>(null);
+  const [auditEndDate, setAuditEndDate] = useState<Date | null>(null);
+
+  // Adding search/sort/filter options
+  const [searchQuery, setSearchQuery]= useState('');
+  const [sortField, setSortField] = useState<'name' | 'quantity' | 'updated_at'>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const navigate = useNavigate();
   const formatDate = (dateString: string | Date) => {
@@ -67,9 +81,38 @@ const InventoryList = () => {
   const categories = Array.from(
     new Set(materialList.map(m => m.category).filter(Boolean))
 );
-  const filteredInventory = selectedCategory === 'All'
-    ? inventory
-    : inventory.filter(item => item.materials.category.toLowerCase() === selectedCategory.toLowerCase());
+ const filteredInventory = [...inventory]
+    .filter(item =>
+      item.materials.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .filter(item =>
+      selectedCategory === 'All' ||
+      item.materials.category.toLowerCase() === selectedCategory.toLowerCase()
+    )
+    .sort((a, b) => {
+      let aVal: any, bVal: any;
+
+      switch (sortField) {
+        case 'name':
+          aVal = a.materials.name.toLowerCase();
+          bVal = b.materials.name.toLowerCase();
+          break;
+        case 'quantity':
+          aVal = a.quantity;
+          bVal = b.quantity;
+          break;
+        case 'updated_at':
+          aVal = new Date(a.last_updated).getTime();
+          bVal = new Date(b.last_updated).getTime();
+          break;
+        default:
+          return 0;
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+  });
 
 
   return (
@@ -93,8 +136,47 @@ const InventoryList = () => {
         <div className="card-header bg-primary text-white">
           <h3 className="mb-0">📦 Current Inventory</h3>
         </div>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <input
+            type="text"
+            placeholder="Search materials..."
+            className="form-control me-2"
+            style={{ maxWidth: '250px' }}
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+
+          <select
+            className="form-select"
+            style={{ maxWidth: '200px' }}
+            value={sortField}
+            onChange={e => setSortField(e.target.value as any)}
+          >
+            <option value="name">Sort by Name</option>
+            <option value="quantity">Sort by Quantity</option>
+            <option value="updated_at">Sort by Last Updated</option>
+          </select>
+
+          <button
+            className="btn btn-outline-secondary"
+            onClick={() =>
+              setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'))
+            }
+            title="Toggle sort direction"
+          >
+            {sortDirection === 'asc' ? '↑' : '↓'}
+          </button>
+        </div>
+
         <div className="card-body p-0">
           <table className="table table-hover table-striped mb-0">
+            <colgroup>
+              <col style={{ width: '30%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '25%' }} />
+              <col style={{ width: '25%' }} />
+            </colgroup>
+
             <thead className="table-light">
               <tr>
                 <th>Material</th>
@@ -161,6 +243,7 @@ const InventoryList = () => {
             Audit Log for: {selectedMaterial?.materials.name}
           </Modal.Title>
         </Modal.Header>
+
         <Modal.Body>
           {loadingAudit ? (
             <div className="d-flex justify-content-center my-5">
@@ -171,119 +254,159 @@ const InventoryList = () => {
           ) : auditLog.length === 0 ? (
             <div className="text-center text-muted">No audit log entries found.</div>
           ) : (
-            <table className="table table-hover table-striped table-sm mb-0" style={{ tableLayout: 'fixed', width: '100%' }}>
-              <colgroup>
-                <col style={{ width: '18%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
-              </colgroup>
-              <thead className="table-light small">
-                <tr>
-                  <th>Date/Time</th>
-                  <th className="text-center">Change</th>
-                  <th className="text-center">Inventory After Change</th>
-                  <th>Source</th>
-                  <th>Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditLog.map((entry, i) => {
-                  const isPackingSlip = entry.source === 'Packing Slip';
-                  const isOutbound = isPackingSlip && entry.slipType === 'Outbound';
-                  const isPositive = entry.change > 0;
-                  const isReversal = entry.reason?.toLowerCase().includes('reversal');
+            <div>
+              {/* Filters */}
+              <div className="d-flex flex-wrap gap-2 align-items-center mb-3">
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ maxWidth: '250px' }}
+                  placeholder="Search details..."
+                  value={auditSearch}
+                  onChange={e => setAuditSearch(e.target.value)}
+                />
 
-                  const isFerrous = selectedMaterial?.materials.category.toLowerCase() === 'ferrous';
-                  const unitLabel = isFerrous ? 'GT' : (entry.unit ?? 'lb');
+                <div style={{ maxWidth: '140px' }}>
+                  <DatePicker
+                    selected={auditStartDate}
+                    onChange={(date: Date | null) => setAuditStartDate(date)}
+                    selectsStart
+                    startDate={auditStartDate}
+                    endDate={auditEndDate}
+                    placeholderText="Start Date"
+                    className="form-control"
+                    isClearable
+                    maxDate={auditEndDate || undefined}
+                  />
+                </div>
 
-                  // Convert value if needed
-                  const convertedChange = isFerrous
-                    ? entry.change / 2240
-                    : entry.change;
+                <div style={{ maxWidth: '140px' }}>
+                  <DatePicker
+                    selected={auditEndDate}
+                    onChange={(date: Date | null) => setAuditEndDate(date)}
+                    selectsEnd
+                    startDate={auditStartDate}
+                    endDate={auditEndDate}
+                    placeholderText="End Date"
+                    className="form-control"
+                    isClearable
+                    minDate={auditStartDate || undefined}
+                  />
+                </div>
+              </div>
 
-                  const displayValue =
-                    isOutbound && isPositive
-                      ? `-${convertedChange.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-                      : isPositive
-                      ? `+${convertedChange.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-                      : convertedChange.toLocaleString(undefined, { maximumFractionDigits: 2 });
+              {/* Audit Table */}
+              <table className="table table-hover table-striped table-sm mb-0" style={{ tableLayout: 'fixed', width: '100%' }}>
+                <colgroup>
+                  <col style={{ width: '18%' }} />
+                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '22%' }} />
+                </colgroup>
+                <thead className="table-light small">
+                  <tr>
+                    <th>Date/Time</th>
+                    <th className="text-center">Change</th>
+                    <th className="text-center">Inventory After</th>
+                    <th>Source</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditLog
+                    .filter(entry => {
+                      const searchMatch = JSON.stringify(entry).toLowerCase().includes(auditSearch.toLowerCase());
+                      const entryDate = new Date(entry.timestamp);
+                      const afterStart = auditStartDate ? entryDate >= auditStartDate : true;
+                      const beforeEnd = auditEndDate ? entryDate <= new Date(auditEndDate.getTime() + 86399999) : true;
+                      return searchMatch && afterStart && beforeEnd;
+                    })
 
+                    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) // latest first
+                    .map((entry, i) => {
+                      const isPackingSlip = entry.source === 'Packing Slip';
+                      const isOutbound = isPackingSlip && entry.slipType === 'Outbound';
+                      const isPositive = entry.change > 0;
+                      const isReversal = entry.reason?.toLowerCase().includes('reversal');
 
-                  return (
-                    <tr key={i} style={{ cursor: 'default' }} className={isReversal ? 'text-danger' : ''}>
-                      <td style={{ whiteSpace: 'nowrap' }}>{formatDate(entry.timestamp)}</td>
-                      <td className="text-center fw-semibold">
-                        {`${displayValue} ${unitLabel}`}
-                      </td>
-                      <td className="text-center fw-semibold">
-                        {typeof entry.snapshot_quantity === 'number' ? (
-                          selectedMaterial?.materials.category.toLowerCase() === 'ferrous' ? (
-                            `${(entry.snapshot_quantity / 2240).toFixed(2)} GT`
-                          ) : (
-                            `${entry.snapshot_quantity.toLocaleString()} ${entry.unit ?? 'lb'}`
-                          )
-                        ) : (
-                          '-'
-                        )}
-                      </td>
+                      const isFerrous = selectedMaterial?.materials.category.toLowerCase() === 'ferrous';
+                      const unitLabel = isFerrous ? 'GT' : (entry.unit ?? 'lb');
 
-                      <td>{entry.source}</td>
-                      <td>
-                        {entry.source === 'Packing Slip' && entry.packingSlipId ? (
-                          <span
-                            onClick={() => handlePackingSlipClick(entry.packingSlipId!)}
-                            style={{
-                              color: isReversal ? '#dc3545' : '#343a40',
-                              cursor: 'pointer',
-                              textDecoration: 'none',
-                              fontWeight: 500,
-                              fontStyle: isReversal ? 'italic' : 'normal',
-                            }}
-                            className="audit-clickable"
-                            onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
-                            onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
-                          >
-                            {isReversal ? `Reversal: Slip #${entry.packingSlipId}` : `Slip #${entry.packingSlipId}`}
-                          </span>
-                        ) : entry.source === 'Reclassification' ? (
-                          <>
-                            {entry.load && <div className="text-muted small">Load: {entry.load}</div>}
-                            {entry.reason && <div className="text-muted small">Reason: {entry.reason}</div>}
-                            {entry.direction === 'From' && entry.movedTo && (
-                              <div className="text-muted small">→ Moved to: <strong>{entry.movedTo}</strong></div>
+                      const convertedChange = isFerrous ? entry.change / 2240 : entry.change;
+
+                      const displayValue = isOutbound && isPositive
+                        ? `-${convertedChange.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                        : isPositive
+                        ? `+${convertedChange.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                        : convertedChange.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+                      return (
+                        <tr key={i} style={{ cursor: 'default' }} className={isReversal ? 'text-danger' : ''}>
+                          <td style={{ whiteSpace: 'nowrap' }}>{formatDate(entry.timestamp)}</td>
+                          <td className="text-center fw-semibold">{`${displayValue} ${unitLabel}`}</td>
+                          <td className="text-center fw-semibold">
+                            {typeof entry.snapshot_quantity === 'number' ? (
+                              isFerrous
+                                ? `${(entry.snapshot_quantity / 2240).toFixed(2)} GT`
+                                : `${entry.snapshot_quantity.toLocaleString()} ${entry.unit ?? 'lb'}`
+                            ) : '-'}
+                          </td>
+                          <td>{entry.source}</td>
+                          <td>
+                            {isPackingSlip && entry.packingSlipId ? (
+                              <span
+                                onClick={() => handlePackingSlipClick(entry.packingSlipId!)}
+                                style={{
+                                  color: isReversal ? '#dc3545' : '#343a40',
+                                  cursor: 'pointer',
+                                  fontWeight: 500,
+                                  fontStyle: isReversal ? 'italic' : 'normal',
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                                onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                              >
+                                {isReversal ? `Reversal: Slip #${entry.packingSlipId}` : `Slip #${entry.packingSlipId}`}
+                              </span>
+                            ) : entry.source === 'Reclassification' ? (
+                              <>
+                                {entry.load && <div className="text-muted small">Load: {entry.load}</div>}
+                                {entry.reason && <div className="text-muted small">Reason: {entry.reason}</div>}
+                                {entry.direction === 'From' && entry.movedTo && (
+                                  <div className="text-muted small">→ Moved to: <strong>{entry.movedTo}</strong></div>
+                                )}
+                                {entry.direction === 'To' && entry.movedFrom && (
+                                  <div className="text-muted small">← Moved from: <strong>{entry.movedFrom}</strong></div>
+                                )}
+                              </>
+                            ) : entry.source === 'Manual Adjustment' ? (
+                              entry.reason ? (
+                                <div className="text-muted small">Reason: {entry.reason}</div>
+                              ) : (
+                                <div className="text-muted small fst-italic">No reason provided</div>
+                              )
+                            ) : entry.remarks ? (
+                              <div className="text-muted small">Remarks: {entry.remarks}</div>
+                            ) : (
+                              '-'
                             )}
-                            {entry.direction === 'To' && entry.movedFrom && (
-                              <div className="text-muted small">← Moved from: <strong>{entry.movedFrom}</strong></div>
-                            )}
-                          </>
-                        ) : entry.source === 'Manual Adjustment' ? (
-                          entry.reason ? (
-                            <div className="text-muted small">Reason: {entry.reason}</div>
-                          ) : (
-                            <div className="text-muted small fst-italic">No reason provided</div>
-                          )
-                        ) : entry.remarks ? (
-                          <div className="text-muted small">Remarks: {entry.remarks}</div>
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
           )}
         </Modal.Body>
+
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowAuditModal(false)}>
             Close
           </Button>
         </Modal.Footer>
       </Modal>
+
     </>
   );
 };

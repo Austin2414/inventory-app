@@ -13,6 +13,10 @@ code {
     monospace;
 }
 
+html {
+  overflow-y: scroll;
+}
+
 /* react-select control styling */
 .react-select__control {
   border-color: #ced4da;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // Add this
+import { useNavigate } from 'react-router-dom';
 import { getPackingSlips } from '../../services/api';
 import PackingSlipForm from './PackingSlipForm';
 import PackingSlipView from './PackingSlipView';
@@ -7,19 +7,20 @@ import PackingSlipList from './PackingSlipList';
 import { PackingSlip } from '../../types';
 
 const PackingSlipManager: React.FC = () => {
-  const navigate = useNavigate(); // Add this
+  const navigate = useNavigate();
   const [view, setView] = useState<'list' | 'form' | 'view'>('list');
   const [packingSlips, setPackingSlips] = useState<PackingSlip[]>([]);
   const [selectedSlipId, setSelectedSlipId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [includeDeleted, setIncludeDeleted] = useState(false);
 
   const fetchPackingSlips = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await getPackingSlips();
+      const response = await getPackingSlips(true); // Fetch ALL slips including deleted
       setPackingSlips(response.data);
     } catch (err) {
       setError('Failed to load packing slips. Please try again.');
@@ -43,11 +44,10 @@ const PackingSlipManager: React.FC = () => {
     setIsSubmitting(true);
   };
 
-  // Handle view navigation
   const handleViewSlip = (id: string) => {
     setSelectedSlipId(id);
     setView('view');
-    navigate(`/packing-slips/${id}`); // Add this line
+    navigate(`/packing-slips/${id}`);
   };
 
   if (loading) {
@@ -81,7 +81,7 @@ const PackingSlipManager: React.FC = () => {
     <div className="container mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1>Packing Slips</h1>
-        
+
         {view === 'list' && (
           <button 
             className="btn btn-primary"
@@ -92,7 +92,6 @@ const PackingSlipManager: React.FC = () => {
         )}
       </div>
 
-      {/* Form View */}
       {view === 'form' && (
         <PackingSlipForm 
           onSubmit={() => {
@@ -106,11 +105,12 @@ const PackingSlipManager: React.FC = () => {
         />
       )}
 
-      {/* List View */}
       {view === 'list' && (
         <PackingSlipList 
           slips={packingSlips}
-          onView={handleViewSlip} // Updated to use new handler
+          onView={handleViewSlip}
+          includeDeleted={includeDeleted}
+          setIncludeDeleted={setIncludeDeleted}
         />
       )}
     </div>
