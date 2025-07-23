@@ -34,6 +34,19 @@ interface PackingSlip {
     ticket_number: string;
   }[];
   deleted_at?: Date | null;
+  // Extra packig slip info
+  vesselNumber?: string | null;
+  voyageNumber?: string | null;
+  containerNumber?: string | null;
+  multiPoNotes?: string[] | null;
+  customerAddress?: string | null;
+  carrierName?: string | null;
+  pickupNumber?: string | null;
+  deliveryNumber?: string | null;
+  deliveryDateTime?: Date | null;
+  orderNumber?: string | null;
+  careOf?: string | null;
+  slipGroupId?: number | null;
 }
 
 interface RawPackingSlipItem {
@@ -61,6 +74,20 @@ interface RawPackingSlip {
   seal_number: string | null;
   date_time: Date;
   deleted_at?: Date | null;
+
+  // Extra packig slip info
+  vesselNumber?: string | null;
+  voyageNumber?: string | null;
+  containerNumber?: string | null;
+  multiPoNotes?: string[] | null;
+  customerAddress?: string | null;
+  carrierName?: string | null;
+  pickupNumber?: string | null;
+  deliveryNumber?: string | null;
+  deliveryDateTime?: Date | null;
+  orderNumber?: string | null;
+  careOf?: string | null;
+  slipGroupId?: number | null;
 
   packing_slip_items?: RawPackingSlipItem[];
   location?: {
@@ -96,7 +123,21 @@ function transformPackingSlip(slip: RawPackingSlip): PackingSlip {
       tare_weight: item.tare_weight,
       remarks: item.remarks || "",
       ticket_number: item.ticket_number || ""
-    }))
+    })),
+    // New optional advanced fields 
+    vesselNumber: slip.vesselNumber ?? null,
+    voyageNumber: slip.voyageNumber ?? null,
+    containerNumber: slip.containerNumber ?? null,
+    multiPoNotes: slip.multiPoNotes ?? null,
+    customerAddress: slip.customerAddress ?? null,
+    carrierName: slip.carrierName ?? null,
+    pickupNumber: slip.pickupNumber ?? null,
+    deliveryNumber: slip.deliveryNumber ?? null,
+    deliveryDateTime: slip.deliveryDateTime ?? null,
+    orderNumber: slip.orderNumber ?? null,
+    careOf: slip.careOf ?? null,
+    slipGroupId: slip.slipGroupId ?? null,
+
   };
 }
 
@@ -160,7 +201,6 @@ async function getCurrentInventory(material_id: number, location_id: number): Pr
 
 
 // Routes
-
 router.get('/', handle(async (req, res) => {
   const includeDeleted = req.query.includeDeleted === 'true';
 
@@ -278,6 +318,18 @@ router.post('/', handle(async (req, res) => {
       trailer_number: trailer_number || null,
       po_number: po_number || null,
       seal_number: seal_number || null,
+      vesselNumber: body.vesselNumber || null,
+      voyageNumber: body.voyageNumber || null,
+      containerNumber: body.containerNumber || null,
+      multiPoNotes: body.multiPoNotes || null,
+      customerAddress: body.customerAddress || null,
+      carrierName: body.carrierName || null,
+      pickupNumber: body.pickupNumber || null,
+      deliveryNumber: body.deliveryNumber || null,
+      deliveryDateTime: body.deliveryDateTime || null,
+      orderNumber: body.orderNumber || null,
+      careOf: body.careOf || null,
+      slipGroupId: body.slipGroupId || null,
       packing_slip_items: {
         create: items.map(item => ({
           material_id: parseInt(item.material_id),
@@ -322,7 +374,21 @@ router.patch('/:id', handle(async (req, res) => {
     trailer_number: req.body.trailer_number,
     po_number: req.body.po_number,
     seal_number: req.body.seal_number,
-    status: req.body.status // Always include status if present
+    slip_type: req.body.slip_type,
+    status: req.body.status, // Always include status if present
+
+    vesselNumber: req.body.vesselNumber,
+    voyageNumber: req.body.voyageNumber,
+    containerNumber: req.body.containerNumber,
+    multiPoNotes: req.body.multiPoNotes,
+    customerAddress: req.body.customerAddress,
+    carrierName: req.body.carrierName,
+    pickupNumber: req.body.pickupNumber,
+    deliveryNumber: req.body.deliveryNumber,
+    deliveryDateTime: req.body.deliveryDateTime,
+    orderNumber: req.body.orderNumber,
+    careOf: req.body.careOf,
+    slipGroupId: req.body.slipGroupId
   };
 
   // Delete existing items if new items are provided

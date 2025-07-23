@@ -56,18 +56,32 @@ model inventory {
 }
 
 model packing_slips {
-  id             Int      @id @default(autoincrement())
-  slip_type      String
-  status         String   @default("draft")
-  from_name      String?
-  to_name        String?
-  date_time      DateTime @default(now())
-  truck_number   String?
-  trailer_number String?
-  po_number      String?
-  seal_number    String?
-  location_id    Int
-  deleted_at     DateTime?
+  id               Int      @id @default(autoincrement())
+  slip_type        String
+  status           String   @default("draft")
+  from_name        String?
+  to_name          String?
+  date_time        DateTime @default(now())
+  truck_number     String?
+  trailer_number   String?
+  po_number        String?
+  seal_number      String?
+  location_id      Int
+  deleted_at       DateTime?
+
+  vesselNumber     String?
+  voyageNumber     String?
+  containerNumber  String?
+  multiPoNotes     String[] // array of POs
+
+  customerAddress  String?
+  carrierName      String?
+  pickupNumber     String?
+  deliveryNumber   String?
+  deliveryDateTime DateTime?
+  orderNumber      String?
+  careOf           String?
+  slipGroupId      Int?
 
   location           locations            @relation(fields: [location_id], references: [id])
   packing_slip_items packing_slip_items[]

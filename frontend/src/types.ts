@@ -66,6 +66,21 @@ export interface PackingSlip {
   location_name?: string;
   location?: Location;
   deleted_at?: string | null;
+
+  // New required fields
+  customerAddress: string | null;
+  carrierName: string | null;
+  // New additions to packing slip
+  vesselNumber?: string | null;
+  voyageNumber?: string | null;
+  containerNumber?: string | null;
+  multiPoNotes?: string[];
+  pickupNumber?: string | null;
+  deliveryNumber?: string | null;
+  deliveryDateTime?: Date | null;
+  orderNumber?: string | null;
+  careOf?: string | null;
+  slipGroupId?: number | null;
 }
 
 // Form data types
@@ -80,6 +95,19 @@ export interface PackingSlipFormData {
   po_number: string;
   seal_number: string;
   items: PackingSlipFormItem[]; // Use FormItem here
+   // NEW optional advanced info
+  vesselNumber?: string;
+  voyageNumber?: string;
+  containerNumber?: string;
+  multiPoNotes?: string[]; // This can be edited as a string input and split on comma
+  customerAddress?: string;
+  carrierName?: string;
+  pickupNumber?: string;
+  deliveryNumber?: string;
+  deliveryDateTime?: Date | null; // Use `Date | null` since it's a date input
+  orderNumber?: string;
+  careOf?: string;
+  slipGroupId?: number | null; // If you use it in the form, otherwise omit
 }
 
 export interface ReclassifyFormData {

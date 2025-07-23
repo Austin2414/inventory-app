@@ -157,21 +157,49 @@ const PackingSlipView: React.FC = () => {
 
 
         {/* Customer Info */}
-        <div className="mb-2">
-          <strong>Customer:</strong> <span className="fw-normal">{slip.to_name || 'N/A'}</span>
+        <div className="mb-3">
+          <h5 className="mb-1"><strong>Customer:</strong> <span className="fw-normal">{slip.to_name || 'N/A'}</span></h5>
+          {slip.customerAddress && (
+            <div className="text-muted">{slip.customerAddress}</div>
+          )}
         </div>
 
-        {/* Shipment Info */}
-        <div className="row mb-2">
-          <div className="col-md-6 small">
-            <p className="mb-1"><strong>Truck #:</strong> {slip.truck_number || 'N/A'}</p>
-            <p className="mb-1"><strong>Trailer #:</strong> {slip.trailer_number || 'N/A'}</p>
+        {/* Shipment & Extended Slip Info */}
+        <div className="row small mb-4">
+          {/* Left Column: Shipping Info */}
+          <div className="col-md-6">
+            {slip.carrierName && <div><strong>Carrier:</strong> {slip.carrierName}</div>}
+            {slip.truck_number && <div><strong>Truck #:</strong> {slip.truck_number}</div>}
+            {slip.trailer_number && <div><strong>Trailer #:</strong> {slip.trailer_number}</div>}
+            {slip.po_number && <div><strong>PO #:</strong> {slip.po_number}</div>}
+            {slip.seal_number && <div><strong>Seal #:</strong> {slip.seal_number}</div>}
           </div>
-          <div className="col-md-6 small">
-            <p className="mb-1"><strong>PO #:</strong> {slip.po_number || 'N/A'}</p>
-            <p className="mb-1"><strong>Seal #:</strong> {slip.seal_number || 'N/A'}</p>
+
+          {/* Right Column: Additional Slip Info */}
+          <div className="col-md-6">
+            {slip.careOf && <div><strong>Care Of:</strong> {slip.careOf}</div>}
+            {slip.pickupNumber && <div><strong>Pickup #:</strong> {slip.pickupNumber}</div>}
+            {slip.deliveryNumber && <div><strong>Delivery #:</strong> {slip.deliveryNumber}</div>}
+            {slip.deliveryDateTime && (
+              <div><strong>Delivery Date/Time:</strong> {formatDate(slip.deliveryDateTime)}</div>
+            )}
+            {slip.orderNumber && <div><strong>Order #:</strong> {slip.orderNumber}</div>}
+            {slip.vesselNumber && <div><strong>Vessel #:</strong> {slip.vesselNumber}</div>}
+            {slip.voyageNumber && <div><strong>Voyage #:</strong> {slip.voyageNumber}</div>}
+            {slip.containerNumber && <div><strong>Container #:</strong> {slip.containerNumber}</div>}
+            {slip.multiPoNotes?.length > 0 && (
+              <div>
+                <strong>Multi PO #s:</strong>
+                <ul className="mb-1">
+                  {slip.multiPoNotes.map((note, idx) => (
+                    <li key={idx}>{note}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
+
 
         {/* Items Table */}
         <h6 className="mb-2">Items</h6>

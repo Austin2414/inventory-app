@@ -1,10 +1,23 @@
 // src/components/PackingSlips/PackingSlipForm.tsx
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Location, Material, PackingSlipFormData, PackingSlipFormItem, PackingSlip } from '../../types';
 import { getLocations, getMaterials, deletePackingSlip } from '../../services/api';
 import Select from 'react-select';
+import { Collapse } from 'react-bootstrap';
+
+function formatDateTimeLocal(date: Date | string) {
+  const d = new Date(date);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
 interface PackingSlipFormProps {
   id?: number;
   onSave: () => void;
@@ -25,12 +38,15 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
 }) => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [formData, setFormData] = useState<PackingSlipFormData>({
     slip_type: 'outbound',
     location_id: '',
     status: 'draft',
     from_name: '',
+    customerAddress: '',
+    carrierName: '',
     to_name: '',
     truck_number: '',
     trailer_number: '',
@@ -45,6 +61,18 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
         ticket_number: '',
       },
     ],
+
+    // New optional fields
+    vesselNumber: '',
+    voyageNumber: '',
+    containerNumber: '',
+    multiPoNotes: [],
+    pickupNumber: '',
+    deliveryNumber: '',
+    deliveryDateTime: null,
+    orderNumber: '',
+    careOf: '',
+    slipGroupId: null,
   });
 
   const navigate = useNavigate();
@@ -90,6 +118,18 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
           remarks: item.remarks || '',
           ticket_number: item.ticket_number || '',
         })),
+        customerAddress: editData.customerAddress || '',
+        carrierName: editData.carrierName || '',
+        pickupNumber: editData.pickupNumber || '',
+        deliveryNumber: editData.deliveryNumber || '',
+        deliveryDateTime: editData.deliveryDateTime ? new Date(editData.deliveryDateTime) : null,
+        orderNumber: editData.orderNumber || '',
+        careOf: editData.careOf || '',
+        vesselNumber: editData.vesselNumber || '',
+        voyageNumber: editData.voyageNumber || '',
+        containerNumber: editData.containerNumber || '',
+        multiPoNotes: editData.multiPoNotes || [],
+        slipGroupId: editData.slipGroupId ?? null,
       });
     }
   }, [editData]);
@@ -125,82 +165,104 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  // Basic validation for customer name and location
-  if (!formData.to_name.trim()) {
-    alert('Customer name is required.');
-    return;
-  }
-  if (!formData.location_id) {
-    alert('Location must be selected.');
-    return;
-  }
-  if (formData.items.length === 0) {
-    alert('At least one item must be added.');
-    return;
-  }
-
-  // Validate each item: material_id, gross_weight, tare_weight
-  for (let i = 0; i < formData.items.length; i++) {
-  const item = formData.items[i];
-  if (!item.material_id) {
-    alert(`Material is required for item ${i + 1}.`);
-    return;
-  }
-  const gross = Number(item.gross_weight);
-  const tare = Number(item.tare_weight);
-
-  if (!item.gross_weight || isNaN(gross) || gross <= 0) {
-    alert(`Gross weight must be a positive number for item ${i + 1}.`);
-    return;
-  }
-  if (item.tare_weight === '' || isNaN(tare) || tare < 0) {
-    alert(`Tare weight must be zero or greater for item ${i + 1}.`);
-    return;
-  }
-  if (tare > gross) {
-    alert(`Tare weight cannot be greater than gross weight for item ${i + 1}.`);
-    return;
-  }
-}
-
-  try {
-    const method = editData && editData.status === 'draft' ? 'PATCH' : 'POST';
-    const url = editData && editData.status === 'draft'
-      ? `/api/packing-slips/${editData.id}`
-      : '/api/packing-slips';
-
-    const response = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-
-    if (!response.ok) {
-      const err = await response.json();
-      console.error('Save error:', err);
-      alert(err.message || 'Failed to save packing slip');
+    // Basic validation
+    if (!formData.to_name.trim()) {
+      alert('Customer name is required.');
+      return;
+    }
+    if (!formData.location_id) {
+      alert('Location must be selected.');
+      return;
+    }
+    if (formData.items.length === 0) {
+      alert('At least one item must be added.');
       return;
     }
 
-    const result = await response.json();
-    console.log('Save success:', result);
-    window.location.reload();
-  } catch (err) {
-    console.error('Unexpected error:', err);
-    alert('Something went wrong. Please try again.');
-  }
-};
+    for (let i = 0; i < formData.items.length; i++) {
+      const item = formData.items[i];
+      if (!item.material_id) {
+        alert(`Material is required for item ${i + 1}.`);
+        return;
+      }
+      const gross = Number(item.gross_weight);
+      const tare = Number(item.tare_weight);
+
+      if (!item.gross_weight || isNaN(gross) || gross <= 0) {
+        alert(`Gross weight must be a positive number for item ${i + 1}.`);
+        return;
+      }
+      if (item.tare_weight === '' || isNaN(tare) || tare < 0) {
+        alert(`Tare weight must be zero or greater for item ${i + 1}.`);
+        return;
+      }
+      if (tare > gross) {
+        alert(`Tare weight cannot be greater than gross weight for item ${i + 1}.`);
+        return;
+      }
+    }
+
+    // Confirm if marking as completed
+    if (formData.status === 'completed') {
+      const confirmed = window.confirm(
+        'Are you sure you want to mark this packing slip as completed? This cannot be changed.'
+      );
+      if (!confirmed) return;
+    }
+
+    try {
+      const method = editData && editData.status === 'draft' ? 'PATCH' : 'POST';
+      const url =
+        editData && editData.status === 'draft'
+          ? `/api/packing-slips/${editData.id}`
+          : '/api/packing-slips';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        console.error('Save error:', err);
+        alert(err.message || 'Failed to save packing slip');
+        return;
+      }
+
+      const result = await response.json();
+      console.log('Save success:', result);
+
+      // Redirect logic
+      if (editData && editData.status === 'draft') {
+        // Editing: refresh current page
+        window.location.reload();
+      } else if (formData.status === 'completed') {
+        // New and completed: redirect to specific slip
+        window.location.href = `/packing-slips/${result.id}`;
+      } else {
+        // New and draft: go to list
+        window.location.href = '/packing-slips';
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      alert('Something went wrong. Please try again.');
+    }
+  };
+
+
+
 
   return (
+  <>
   <div className="card mt-3 shadow-sm">
     <div className="card-header bg-info text-white py-2 px-3">
       <h6 className="mb-0">{editData ? 'Edit Packing Slip' : 'Create Packing Slip'}</h6>
     </div>
 
     <div className="card-body py-3 px-3">
-      {success && <div className="alert alert-success small">Packing slip saved successfully!</div>}
       {error && <div className="alert alert-danger small">{error}</div>}
 
       <form onSubmit={handleSubmit} className="small">
@@ -208,10 +270,19 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
           {/* Shipment Info */}
           <div className="col-md-6">
             <div className="card shadow-sm mb-2">
-              <div className="card-header bg-light py-2">
+              <div className="card-header bg-light py-2 d-flex justify-content-between align-items-center">
                 <strong>Shipment Info</strong>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary"
+                  onClick={() => setShowAdvanced(prev => !prev)}
+                >
+                  {showAdvanced ? 'Hide Extra Info' : 'Add Extra Info'}
+                </button>
               </div>
+
               <div className="card-body py-2 px-3">
+                {/* Basic Fields */}
                 <div className="mb-2">
                   <label className="form-label mb-1">Customer Name</label>
                   <input
@@ -223,6 +294,28 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
                     required
                   />
                 </div>
+
+                <div className="mb-2">
+                  <label className="form-label mb-1">Customer Address</label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    value={formData.customerAddress}
+                    onChange={e => handleChange('customerAddress', e.target.value)}
+                  />
+                </div>
+
+                <div className="mb-2">
+                  <label className="form-label mb-1">Carrier Name</label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    value={formData.carrierName}
+                    onChange={e => handleChange('carrierName', e.target.value)}
+                    required
+                  />
+                </div>
+
 
                 <div className="row gx-2">
                   <div className="col-6 mb-2">
@@ -269,6 +362,115 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
                     />
                   </div>
                 </div>
+
+                {/* Advanced Collapsible Section */}
+                <Collapse in={showAdvanced}>
+                  <div className="mt-3">
+                    <div className="mb-2">
+                      <label className="form-label mb-1">Vessel Number</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        value={formData.vesselNumber || ''}
+                        onChange={e => handleChange('vesselNumber', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="mb-2">
+                      <label className="form-label mb-1">Voyage Number</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        value={formData.voyageNumber || ''}
+                        onChange={e => handleChange('voyageNumber', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="mb-2">
+                      <label className="form-label mb-1">Container Number</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        value={formData.containerNumber || ''}
+                        onChange={e => handleChange('containerNumber', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="mb-2">
+                      <label className="form-label mb-1">Multi-PO #s (comma separated)</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        value={formData.multiPoNotes?.join(', ') || ''}
+                        onChange={e =>
+                          setFormData(prev => ({
+                            ...prev,
+                            multiPoNotes: e.target.value.split(',').map(s => s.trim()),
+                          }))
+                        }
+                      />
+                    </div>
+
+                    <div className="mb-2">
+                      <label className="form-label mb-1">Pickup Number</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        value={formData.pickupNumber || ''}
+                        onChange={e => handleChange('pickupNumber', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="mb-2">
+                      <label className="form-label mb-1">Delivery Number</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        value={formData.deliveryNumber || ''}
+                        onChange={e => handleChange('deliveryNumber', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="mb-2">
+                      <label className="form-label mb-1">Delivery Date/Time</label>
+                      <input
+                        type="datetime-local"
+                        className="form-control form-control-sm"
+                        value={
+                          formData.deliveryDateTime
+                            ? formatDateTimeLocal(formData.deliveryDateTime)
+                            : ''
+                        }
+                        onChange={e =>
+                          setFormData(prev => ({
+                            ...prev,
+                            deliveryDateTime: e.target.value ? new Date(e.target.value) : null,
+                          }))
+                        }
+                      />
+                    </div>
+
+                    <div className="mb-2">
+                      <label className="form-label mb-1">Order Number</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        value={formData.orderNumber || ''}
+                        onChange={e => handleChange('orderNumber', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="mb-2">
+                      <label className="form-label mb-1">Care Of</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        value={formData.careOf || ''}
+                        onChange={e => handleChange('careOf', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </Collapse>
               </div>
             </div>
           </div>
@@ -549,6 +751,7 @@ const PackingSlipForm: React.FC<PackingSlipFormProps> = ({
       </form>
     </div>
   </div>
+  </>
 );
 
 };
