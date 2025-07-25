@@ -203,10 +203,10 @@ const InventoryList = () => {
               </tr>
             </thead>
             <tbody>
-              {inventory.length === 0 ? (
+              {filteredInventory.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="text-center py-4">
-                    No inventory records found.
+                  <td colSpan={4} className="text-center text-muted py-4">
+                    No materials match your search.
                   </td>
                 </tr>
               ) : (
@@ -233,6 +233,7 @@ const InventoryList = () => {
                 })
               )}
             </tbody>
+
           </table>
         </div>
       </div>
@@ -322,19 +323,15 @@ const InventoryList = () => {
                       const beforeEnd = auditEndDate ? entryDate <= new Date(auditEndDate.getTime() + 86399999) : true;
                       return searchMatch && afterStart && beforeEnd;
                     })
-
-                    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) // latest first
+                    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                     .map((entry, i) => {
                       const isPackingSlip = entry.source === 'Packing Slip';
                       const isOutbound = isPackingSlip && entry.slipType === 'Outbound';
                       const isPositive = entry.change > 0;
                       const isReversal = entry.reason?.toLowerCase().includes('reversal');
-
                       const isFerrous = selectedMaterial?.materials.category.toLowerCase() === 'ferrous';
                       const unitLabel = isFerrous ? 'GT' : (entry.unit ?? 'lb');
-
                       const convertedChange = isFerrous ? entry.change / 2240 : entry.change;
-
                       const displayValue = isOutbound && isPositive
                         ? `-${convertedChange.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
                         : isPositive
@@ -342,7 +339,11 @@ const InventoryList = () => {
                         : convertedChange.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
                       return (
-                        <tr key={i} style={{ cursor: 'default' }} className={isReversal ? 'text-danger' : ''}>
+                        <tr
+                          key={i}
+                          style={{ cursor: 'default' }}
+                          className={isReversal ? 'table-danger fw-semibold fst-italic' : ''}
+                        >
                           <td style={{ whiteSpace: 'nowrap' }}>{formatDate(entry.timestamp)}</td>
                           <td className="text-center fw-semibold">{`${displayValue} ${unitLabel}`}</td>
                           <td className="text-center fw-semibold">
@@ -357,34 +358,74 @@ const InventoryList = () => {
                             {isPackingSlip && entry.packingSlipId ? (
                               <span
                                 onClick={() => handlePackingSlipClick(entry.packingSlipId!)}
-                                style={{
-                                  color: isReversal ? '#dc3545' : '#343a40',
-                                  cursor: 'pointer',
-                                  fontWeight: 500,
-                                  fontStyle: isReversal ? 'italic' : 'normal',
-                                }}
+                                style={{ cursor: 'pointer', textDecoration: 'none' }}
                                 onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
                                 onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
                               >
                                 {isReversal ? `Reversal: Slip #${entry.packingSlipId}` : `Slip #${entry.packingSlipId}`}
+                                {entry.packingSlip && (
+                                  <>
+                                    {' – '}
+                                    {(entry.packingSlip.slip_type === 'Inbound'
+                                      ? entry.packingSlip.from_name
+                                      : entry.packingSlip.to_name) || 'Unknown Customer'}
+                                  </>
+                                )}
                               </span>
                             ) : entry.source === 'Reclassification' ? (
                               <>
-                                {entry.load && <div className="text-muted small">Load: {entry.load}</div>}
-                                {entry.reason && <div className="text-muted small">Reason: {entry.reason}</div>}
+                                {entry.load && (
+                                  <div className="text-muted small">Load: {entry.load}</div>
+                                )}
+                                {entry.reason && (
+                                  <div className="text-muted small">Reason: {entry.reason}</div>
+                                )}
+                                {entry.linked_slip && (
+                                  <div className="text-muted small">
+                                    Linked Slip:{' '}
+                                    <a
+                                      href={`/packing-slip/${entry.linked_slip.id}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-decoration-none modern-link"
+                                    >
+                                      #{entry.linked_slip.id} — {entry.linked_slip.from_name}
+                                    </a>
+                                  </div>
+                                )}
                                 {entry.direction === 'From' && entry.movedTo && (
-                                  <div className="text-muted small">→ Moved to: <strong>{entry.movedTo}</strong></div>
+                                  <div className="text-muted small">
+                                    → Moved to: <strong>{entry.movedTo}</strong>
+                                  </div>
                                 )}
                                 {entry.direction === 'To' && entry.movedFrom && (
-                                  <div className="text-muted small">← Moved from: <strong>{entry.movedFrom}</strong></div>
+                                  <div className="text-muted small">
+                                    ← Moved from: <strong>{entry.movedFrom}</strong>
+                                  </div>
                                 )}
                               </>
                             ) : entry.source === 'Manual Adjustment' ? (
-                              entry.reason ? (
-                                <div className="text-muted small">Reason: {entry.reason}</div>
-                              ) : (
-                                <div className="text-muted small fst-italic">No reason provided</div>
-                              )
+                              <>
+                                {entry.reason ? (
+                                  <div className="text-muted small">Reason: {entry.reason}</div>
+                                ) : (
+                                  <div className="text-muted small fst-italic">No reason provided</div>
+                                )}
+                                {entry.linked_slip && (
+                                  <div
+                                    style={{ cursor: 'pointer', textDecoration: 'none' }}
+                                    onClick={() => handlePackingSlipClick(entry.linked_slip.id)}
+                                    onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                                    onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                                  >
+                                    Linked Slip #{entry.linked_slip.id}
+                                    {' – '}
+                                    {(entry.linked_slip.slip_type === 'Inbound'
+                                      ? entry.linked_slip.from_name
+                                      : entry.linked_slip.to_name) || 'Unknown Customer'}
+                                  </div>
+                                )}
+                              </>
                             ) : entry.remarks ? (
                               <div className="text-muted small">Remarks: {entry.remarks}</div>
                             ) : (
@@ -394,11 +435,27 @@ const InventoryList = () => {
                         </tr>
                       );
                     })}
+
+                  {/* No filtered entries */}
+                  {auditLog.filter(entry => {
+                    const searchMatch = JSON.stringify(entry).toLowerCase().includes(auditSearch.toLowerCase());
+                    const entryDate = new Date(entry.timestamp);
+                    const afterStart = auditStartDate ? entryDate >= auditStartDate : true;
+                    const beforeEnd = auditEndDate ? entryDate <= new Date(auditEndDate.getTime() + 86399999) : true;
+                    return searchMatch && afterStart && beforeEnd;
+                  }).length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="text-center text-muted py-4">
+                        🔍 No audit log entries found.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           )}
         </Modal.Body>
+
 
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowAuditModal(false)}>

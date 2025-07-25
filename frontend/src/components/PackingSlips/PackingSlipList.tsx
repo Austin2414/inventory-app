@@ -6,7 +6,7 @@ import { PackingSlip } from '../../types';
 
 interface PackingSlipListProps {
   slips: PackingSlip[];
-  onView: (id: string) => void;
+  onView: (id: number) => void;
   includeDeleted: boolean;
   setIncludeDeleted: (value: boolean) => void;
 }
@@ -34,7 +34,7 @@ const PackingSlipList: React.FC<PackingSlipListProps> = ({
       const lower = searchTerm.toLowerCase();
       result = result.filter(
         slip =>
-          slip.id.toLowerCase().includes(lower) ||
+          slip.id.toString().includes(lower) ||
           (slip.to_name && slip.to_name.toLowerCase().includes(lower)) ||
           (slip.po_number && slip.po_number.toLowerCase().includes(lower))
       );
@@ -172,39 +172,46 @@ const PackingSlipList: React.FC<PackingSlipListProps> = ({
             </tr>
           </thead>
           <tbody>
-            {filteredSlips.map(slip => (
-              <tr key={slip.id}>
-                <td>{slip.id}</td>
-                <td>{slip.slip_type.charAt(0).toUpperCase() + slip.slip_type.slice(1)}</td>
-                <td>
-                  <span
-                    className={`badge ${
-                      slip.deleted_at
-                        ? 'bg-danger'
-                        : slip.status === 'completed'
-                        ? 'bg-success'
-                        : 'bg-warning'
-                    }`}
-                  >
-                    {slip.deleted_at
-                      ? 'Deleted'
-                      : slip.status.charAt(0).toUpperCase() + slip.status.slice(1)}
-                  </span>
-                </td>
-                <td>{slip.to_name || 'N/A'}</td>
-                <td>{slip.po_number || 'N/A'}</td>
-                <td>{new Date(slip.date_time).toLocaleDateString()}</td>
-                <td>
-                  <button
-                    className="btn btn-sm btn-primary"
-                    onClick={() => onView(slip.id)}
-                    disabled={!!slip.deleted_at}
-                  >
-                    {slip.status === 'completed' ? 'View' : 'View/Edit'}
-                  </button>
+            {filteredSlips.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="text-center text-muted py-3">
+                  No packing slips found.
                 </td>
               </tr>
-            ))}
+            ) : (
+              filteredSlips.map(slip => (
+                <tr key={slip.id}>
+                  <td>{slip.id}</td>
+                  <td>{slip.slip_type.charAt(0).toUpperCase() + slip.slip_type.slice(1)}</td>
+                  <td>
+                    <span
+                      className={`badge ${
+                        slip.deleted_at
+                          ? 'bg-danger'
+                          : slip.status === 'completed'
+                          ? 'bg-success'
+                          : 'bg-warning'
+                      }`}
+                    >
+                      {slip.deleted_at
+                        ? 'Deleted'
+                        : slip.status.charAt(0).toUpperCase() + slip.status.slice(1)}
+                    </span>
+                  </td>
+                  <td>{slip.to_name || 'N/A'}</td>
+                  <td>{slip.po_number || 'N/A'}</td>
+                  <td>{new Date(slip.date_time).toLocaleDateString()}</td>
+                  <td>
+                    <button
+                      className="btn btn-sm btn-primary"
+                      onClick={() => onView(slip.id)}
+                    >
+                      {slip.status === 'completed' ? 'View' : 'View/Edit'}
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

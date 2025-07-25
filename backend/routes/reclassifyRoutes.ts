@@ -1,3 +1,5 @@
+// src/routes/reclassifyRoutes.ts
+
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 
@@ -12,13 +14,15 @@ router.post('/reclassify', async (req, res) => {
       quantity,
       location_id,
       load,
-      reason
+      reason,
+      linked_slip_id
     } = req.body;
 
     const parsedFrom = parseInt(from_material_id);
     const parsedTo = parseInt(to_material_id);
     const parsedLoc = parseInt(location_id);
     const parsedQty = parseFloat(quantity);
+    const parsedSlipId = linked_slip_id ? parseInt(linked_slip_id) : undefined;
 
     if (!parsedFrom || !parsedTo || !parsedQty || !parsedLoc || parsedQty <= 0) {
       return res.status(400).json({ error: 'Invalid input' });
@@ -62,7 +66,8 @@ router.post('/reclassify', async (req, res) => {
           quantity: parsedQty,
           location_id: parsedLoc,
           load: load || null,
-          reason: reason || null
+          reason: reason || null,
+          linked_slip_id: parsedSlipId ?? null
         }
       })
     ]);
@@ -74,6 +79,5 @@ router.post('/reclassify', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-
 
 export default router;

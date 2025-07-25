@@ -50,7 +50,7 @@ export interface PackingSlipItem {
 
 // Packing Slip type
 export interface PackingSlip {
-  id: string;
+  id: number;
   slip_type: string;
   status: string;
   date_time: Date; 
@@ -115,6 +115,8 @@ export interface ReclassifyFormData {
   to_material_id: string;
   quantity: string;
   location_id: string;
+  linked_slip_id: number | null;
+  reason: string;
 }
 
 // Audit Log
@@ -123,6 +125,7 @@ export interface AuditLogEntry {
   change: number;
   source: 'Packing Slip' | 'Reclassification' | 'Manual Adjustment';
   packingSlipId?: number;
+  packingSlip?: PackingSlip;
   remarks?: string | null;
   reason?: string | null;
   load?: string | null;
@@ -132,6 +135,10 @@ export interface AuditLogEntry {
   movedFrom?: string;
   slipType?: 'Inbound' | 'Outbound';
   snapshot_quantity?: number;
+
+  // New fields for linking reclass/manual adjustments to packing slips and audit log
+  linked_slip_id?: number | null;
+  linked_slip?: PackingSlip | null;
 }
 
 export interface InventoryItem {
@@ -141,3 +148,20 @@ export interface InventoryItem {
   materials: Material;
   locations?: { id: number };
 }
+
+// src/types.ts
+export type SlipOption = {
+  value: number;
+  label: string;
+  slip: {
+    id: number;
+    from_name: string;
+    to_name: string;
+    po_number: string | null;
+    date_time: string;
+    location: {
+      id: number;
+      name: string;
+    }
+  };
+};

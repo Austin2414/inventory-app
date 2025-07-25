@@ -8,7 +8,7 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 interface PackingSlip {
-  id: string;
+  id: number;
   slip_type: string;
   location_id: number;
   location_name?: string;
@@ -25,7 +25,7 @@ interface PackingSlip {
   seal_number: string | null;
   date_time: Date;
   packing_slip_items: {
-    id: string;
+    id: number;
     material_id: number;
     material_name: string;
     gross_weight: number;
@@ -98,7 +98,7 @@ interface RawPackingSlip {
 
 function transformPackingSlip(slip: RawPackingSlip): PackingSlip {
   return {
-    id: String(slip.id),
+    id: slip.id,
     slip_type: slip.slip_type,
     location_id: slip.location_id,
     location_name: slip.location?.name ?? 'N/A',
@@ -116,7 +116,7 @@ function transformPackingSlip(slip: RawPackingSlip): PackingSlip {
     seal_number: slip.seal_number,
     date_time: slip.date_time,
     packing_slip_items: (slip.packing_slip_items || []).map(item => ({
-      id: String(item.id),
+      id: item.id,
       material_id: item.material_id,
       material_name: item.material?.name ?? '',
       gross_weight: item.gross_weight,
@@ -245,6 +245,50 @@ router.get('/all', handle(async (req, res) => {
   res.json(slips.map(transformPackingSlip));
 }));
 
+router.get('/search', handle(async (req, res) => {
+  const query = (req.query.q as string)?.trim();
+
+  if (!query) {
+    return res.status(400).json({ error: 'Missing search query' });
+  }
+
+  const slips = await prisma.packing_slips.findMany({
+    where: {
+      deleted_at: null,
+      OR: [
+        { id: isNaN(Number(query)) ? undefined : Number(query) },
+        { from_name: { contains: query, mode: 'insensitive' } },
+        { to_name: { contains: query, mode: 'insensitive' } },
+        { po_number: { contains: query, mode: 'insensitive' } },
+      ]
+    },
+    orderBy: { date_time: 'desc' },
+    take: 20, // limit results for performance
+    select: {
+      id: true,
+      from_name: true,
+      to_name: true,
+      date_time: true,
+      po_number: true,
+      location_id: true,
+      location: {
+        select: {
+          name: true
+        }
+      }
+    }
+  });
+
+  res.json(slips.map(slip => ({
+    id: slip.id,
+    from_name: slip.from_name,
+    to_name: slip.to_name,
+    po_number: slip.po_number,
+    date_time: slip.date_time,
+    location: { id: slip.location_id, name: slip.location?.name }
+  })));
+}));
+
 router.get('/:id', handle(async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: "Invalid packing slip ID" });
@@ -281,6 +325,7 @@ router.get('/deleted', handle(async (req, res) => {
 
   res.json(slips.map(transformPackingSlip));
 }));
+
 
 router.post('/', handle(async (req, res) => {
   const body = req.body;

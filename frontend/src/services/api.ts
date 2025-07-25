@@ -1,6 +1,6 @@
 // frontend/src/services/api.ts
 import axios from 'axios';
-import { PackingSlipFormData } from '../types';
+import { PackingSlipFormData, ReclassifyFormData } from '../types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -79,6 +79,7 @@ export const createInventoryAdjustment = (data: {
   location_id: number;
   change: number;
   reason?: string;
+  linked_slip_id?: number;
 }) => api.post('/inventory-adjustments', data);
 
 // Audit Log API

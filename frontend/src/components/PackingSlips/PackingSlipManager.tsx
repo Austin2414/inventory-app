@@ -10,7 +10,7 @@ const PackingSlipManager: React.FC = () => {
   const navigate = useNavigate();
   const [view, setView] = useState<'list' | 'form' | 'view'>('list');
   const [packingSlips, setPackingSlips] = useState<PackingSlip[]>([]);
-  const [selectedSlipId, setSelectedSlipId] = useState<string | null>(null);
+  const [selectedSlipId, setSelectedSlipId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,7 +44,7 @@ const PackingSlipManager: React.FC = () => {
     setIsSubmitting(true);
   };
 
-  const handleViewSlip = (id: string) => {
+  const handleViewSlip = (id: number) => {
     setSelectedSlipId(id);
     setView('view');
     navigate(`/packing-slips/${id}`);

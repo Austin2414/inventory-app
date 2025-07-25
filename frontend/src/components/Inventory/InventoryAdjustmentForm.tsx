@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { getMaterials, createInventoryAdjustment } from '../../services/api';
+import AsyncSelect from 'react-select/async';
 import Select from 'react-select';
+import { SlipOption } from '../../types';
 
 const InventoryAdjustmentForm = () => {
   const [materials, setMaterials] = useState<{ id: number; name: string }[]>([]);
   const [formData, setFormData] = useState({
     material_id: '',
     change: '',
-    reason: ''
+    reason: '',
+    linked_slip_id: null as number | null,
   });
+  const [linkedSlip, setLinkedSlip] = useState<SlipOption | null>(null);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -17,14 +21,45 @@ const InventoryAdjustmentForm = () => {
     getMaterials().then(res => setMaterials(res.data));
   }, []);
 
+  const materialOptions = materials.map(m => ({
+    value: m.id,
+    label: m.name,
+  }));
+
+  const selectedMaterial = materialOptions.find(
+    o => String(o.value) === formData.material_id
+  ) || null;
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (selectedOption: any) => {
+  const handleSelectChange = (selected: any) => {
     setFormData(prev => ({
       ...prev,
-      material_id: selectedOption ? String(selectedOption.value) : ''
+      material_id: selected ? String(selected.value) : '',
+    }));
+  };
+
+  const handleSlipSelectChange = (selected: SlipOption | null) => {
+    setLinkedSlip(selected);
+    setFormData(prev => ({
+      ...prev,
+      linked_slip_id: selected?.value ?? null,
+    }));
+  };
+
+  const loadSlipOptions = async (inputValue: string): Promise<SlipOption[]> => {
+    if (!inputValue.trim()) return [];
+
+    const response = await fetch(`/api/packing-slips/search?q=${encodeURIComponent(inputValue)}`);
+    const data = await response.json();
+
+    return data.map((slip: any) => ({
+      value: slip.id,
+      label: `Slip #${slip.id} – ${slip.to_name || slip.from_name || 'No Name'} (${new Date(slip.date_time).toLocaleDateString()})`,
+      slip,
     }));
   };
 
@@ -33,15 +68,24 @@ const InventoryAdjustmentForm = () => {
     setSuccess(false);
     setError(null);
     setIsSubmitting(true);
+
     try {
       await createInventoryAdjustment({
         material_id: Number(formData.material_id),
         location_id: 1,
         change: Number(formData.change),
-        reason: formData.reason
+        reason: formData.reason,
+        linked_slip_id: formData.linked_slip_id ?? null,
       });
+
       setSuccess(true);
-      setFormData({ material_id: '', change: '', reason: '' });
+      setFormData({
+        material_id: '',
+        change: '',
+        reason: '',
+        linked_slip_id: null,
+      });
+      setLinkedSlip(null);
     } catch (err) {
       setError('Failed to apply inventory adjustment');
       console.error(err);
@@ -49,10 +93,6 @@ const InventoryAdjustmentForm = () => {
       setIsSubmitting(false);
     }
   };
-
-  const materialOptions = materials.map(m => ({ value: m.id, label: m.name }));
-
-  const selectedMaterial = materialOptions.find(o => String(o.value) === formData.material_id) || null;
 
   return (
     <div className="card mt-4 shadow">
@@ -94,6 +134,31 @@ const InventoryAdjustmentForm = () => {
             />
             <div className="form-text" style={{ fontSize: '0.9rem' }}>Use a negative number to subtract from inventory.</div>
           </div>
+
+          <div className="mb-3">
+            <label className="form-label">Link to Packing Slip (optional)</label>
+            <AsyncSelect
+              cacheOptions
+              loadOptions={loadSlipOptions}
+              defaultOptions
+              value={linkedSlip}
+              onChange={handleSlipSelectChange}
+              placeholder="Search by Slip ID or Customer Name"
+            />
+          </div>
+
+          {linkedSlip && (
+            <div className="mt-2">
+              <a
+                href={`/packing-slips/${linkedSlip.value}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary text-decoration-underline"
+              >
+                View linked slip
+              </a>
+            </div>
+          )}
 
           <div className="mb-3">
             <label className="form-label" style={{ fontSize: '1rem' }}>Reason</label>

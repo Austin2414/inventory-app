@@ -8,125 +8,150 @@ datasource db {
 }
 
 model User {
-  id       Int    @id @default(autoincrement())
-  username String @unique
-  email    String @unique
-  password String
+  id           Int          @id @default(autoincrement())
+  username     String       @unique
+  email        String       @unique
+  password     String
+  attachments  Attachment[] @relation("UploadedBy")
 }
 
 model locations {
-  id      Int     @id @default(autoincrement())
-  name    String
-  address String?
+  id                     Int                     @id @default(autoincrement())
+  name                   String
+  address                String?
 
-  inventory     inventory[]
-  packing_slips packing_slips[]
-
-  // NEW RELATION
-  reclassification reclassificationLog[]
-  inventory_adjustments inventoryAdjustment[]
+  inventory              inventory[]
+  packing_slips          packing_slips[]
+  reclassification       reclassificationLog[]
+  inventory_adjustments  inventoryAdjustment[]
 }
 
 model materials {
-  id       Int    @id @default(autoincrement())
-  name     String
-  category String
-  unit     String @default("lb")
+  id                    Int                     @id @default(autoincrement())
+  name                  String
+  category              String
+  unit                  String                  @default("lb")
 
-  inventory          inventory[]
-  packing_slip_items packing_slip_items[]
-
-  // NEW RELATIONS
-  reclassify_from reclassificationLog[] @relation("FromMaterial")
-  reclassify_to   reclassificationLog[] @relation("ToMaterial")
-  inventory_adjustments    inventoryAdjustment[]
+  inventory             inventory[]
+  packing_slip_items    packing_slip_items[]
+  reclassify_from       reclassificationLog[]   @relation("FromMaterial")
+  reclassify_to         reclassificationLog[]   @relation("ToMaterial")
+  inventory_adjustments inventoryAdjustment[]
 }
 
 model inventory {
-  id           Int      @id @default(autoincrement())
+  id           Int        @id @default(autoincrement())
   material_id  Int
   quantity     Float
   location_id  Int
-  last_updated DateTime @updatedAt
+  last_updated DateTime   @updatedAt
 
-  locations locations @relation(fields: [location_id], references: [id])
-  materials materials @relation(fields: [material_id], references: [id])
+  locations    locations  @relation(fields: [location_id], references: [id])
+  materials    materials  @relation(fields: [material_id], references: [id])
 
   @@unique([material_id, location_id], name: "uniq_material_location")
 }
 
 model packing_slips {
-  id               Int      @id @default(autoincrement())
-  slip_type        String
-  status           String   @default("draft")
-  from_name        String?
-  to_name          String?
-  date_time        DateTime @default(now())
-  truck_number     String?
-  trailer_number   String?
-  po_number        String?
-  seal_number      String?
-  location_id      Int
-  deleted_at       DateTime?
+  id                  Int                  @id @default(autoincrement())
+  slip_type           String
+  status              String               @default("draft")
+  from_name           String?
+  to_name             String?
+  date_time           DateTime             @default(now())
+  truck_number        String?
+  trailer_number      String?
+  po_number           String?
+  seal_number         String?
+  location_id         Int
+  deleted_at          DateTime?
 
-  vesselNumber     String?
-  voyageNumber     String?
-  containerNumber  String?
-  multiPoNotes     String[] // array of POs
+  vesselNumber        String?
+  voyageNumber        String?
+  containerNumber     String?
+  multiPoNotes        String[]
 
-  customerAddress  String?
-  carrierName      String?
-  pickupNumber     String?
-  deliveryNumber   String?
-  deliveryDateTime DateTime?
-  orderNumber      String?
-  careOf           String?
-  slipGroupId      Int?
+  customerAddress     String?
+  carrierName         String?
+  pickupNumber        String?
+  deliveryNumber      String?
+  deliveryDateTime    DateTime?
+  orderNumber         String?
+  careOf              String?
+  slipGroupId         Int?
 
-  location           locations            @relation(fields: [location_id], references: [id])
-  packing_slip_items packing_slip_items[]
+  location            locations            @relation(fields: [location_id], references: [id])
+  packing_slip_items  packing_slip_items[]
+  reclassificationLog reclassificationLog[] @relation("LinkedSlipReclassifications")
+  inventoryAdjustments inventoryAdjustment[] @relation("LinkedSlipAdjustments")
+  attachments         Attachment[]         @relation("PackingSlipAttachments")
 }
 
-
 model packing_slip_items {
-  id              Int     @id @default(autoincrement())
+  id              Int              @id @default(autoincrement())
   packing_slip_id Int
   material_id     Int
   gross_weight    Float
   tare_weight     Float
-  // net_weight      Float?
   remarks         String?
   ticket_number   String?
 
-  packing_slips packing_slips @relation(fields: [packing_slip_id], references: [id])
-  material      materials     @relation(fields: [material_id], references: [id])
+  packing_slips   packing_slips   @relation(fields: [packing_slip_id], references: [id])
+  material        materials       @relation(fields: [material_id], references: [id])
+  attachments     Attachment[]    @relation("PackingSlipItemAttachments")
 }
 
 model reclassificationLog {
-  id               Int      @id @default(autoincrement())
+  id               Int            @id @default(autoincrement())
   from_material_id Int
   to_material_id   Int
   quantity         Float
   location_id      Int
   load             String?
   reason           String?
-  timestamp        DateTime @default(now())
-  from_material materials @relation("FromMaterial", fields: [from_material_id], references: [id])
-  to_material   materials @relation("ToMaterial", fields: [to_material_id], references: [id])
-  location      locations @relation(fields: [location_id], references: [id])
+  timestamp        DateTime       @default(now())
+  linked_slip_id   Int?
+
+  from_material    materials      @relation("FromMaterial", fields: [from_material_id], references: [id])
+  to_material      materials      @relation("ToMaterial", fields: [to_material_id], references: [id])
+  location         locations      @relation(fields: [location_id], references: [id])
+  linked_slip      packing_slips? @relation("LinkedSlipReclassifications", fields: [linked_slip_id], references: [id])
+  attachments      Attachment[]   @relation("ReclassificationAttachments")
 
   @@map("reclassificationlog")
 }
 
 model inventoryAdjustment {
-  id           Int      @id @default(autoincrement())
-  material_id  Int
-  location_id  Int
-  change       Float
-  reason       String?
-  timestamp    DateTime @default(now())
+  id                Int            @id @default(autoincrement())
+  material_id       Int
+  location_id       Int
+  change            Float
+  reason            String?
+  timestamp         DateTime       @default(now())
   snapshot_quantity Float?
+  linked_slip_id    Int?
 
-  material     materials @relation(fields: [material_id], references: [id])
-  location     locations @relation(fields: [location_id], references: [id])
+  material          materials      @relation(fields: [material_id], references: [id])
+  location          locations      @relation(fields: [location_id], references: [id])
+  linked_slip       packing_slips? @relation("LinkedSlipAdjustments", fields: [linked_slip_id], references: [id])
+  attachments       Attachment[]   @relation("ManualAdjustmentAttachments")
+}
+
+model Attachment {
+  id                  Int               @id @default(autoincrement())
+  url                 String
+  fileName            String
+  type                String
+  createdAt           DateTime          @default(now())
+  uploadedById        Int?
+  packingSlipId       Int?
+  packingSlipItemId   Int?
+  reclassificationId  Int?
+  manualAdjustmentId  Int?
+
+  uploadedBy          User?             @relation("UploadedBy", fields: [uploadedById], references: [id])
+  packingSlip         packing_slips?    @relation("PackingSlipAttachments", fields: [packingSlipId], references: [id])
+  packingSlipItem     packing_slip_items? @relation("PackingSlipItemAttachments", fields: [packingSlipItemId], references: [id])
+  reclassification    reclassificationLog? @relation("ReclassificationAttachments", fields: [reclassificationId], references: [id])
+  manualAdjustment    inventoryAdjustment? @relation("ManualAdjustmentAttachments", fields: [manualAdjustmentId], references: [id])
 }
