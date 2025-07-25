@@ -384,7 +384,7 @@ const InventoryList = () => {
                                   <div className="text-muted small">
                                     Linked Slip:{' '}
                                     <a
-                                      href={`/packing-slip/${entry.linked_slip.id}`}
+                                      href={`/packing-slips/${entry.linked_slip.id}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="text-decoration-none modern-link"

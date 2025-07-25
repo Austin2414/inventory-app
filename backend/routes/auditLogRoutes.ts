@@ -120,8 +120,8 @@ router.get('/:locationId/material/:materialId/audit-log', async (req, res) => {
         direction: isFrom ? 'From' : 'To',
         unit: material?.unit ?? 'lb',
         ...(isFrom ? { movedTo: movedMaterialName } : { movedFrom: movedMaterialName }),
-        packingSlipId: entry.linked_slip_id || null,
-        packingSlip: entry.linked_slip
+        linked_slip_id: entry.linked_slip_id || null,
+        linked_slip: entry.linked_slip
           ? {
               id: entry.linked_slip.id,
               slip_type: entry.linked_slip.slip_type,
@@ -148,8 +148,8 @@ router.get('/:locationId/material/:materialId/audit-log', async (req, res) => {
       formatEntry(entry.timestamp, entry.change, 'Manual Adjustment', {
         reason: entry.reason || null,
         unit: material?.unit ?? '',
-        packingSlipId: entry.linked_slip_id || null,
-        packingSlip: entry.linked_slip
+        linked_slip_id: entry.linked_slip_id || null,
+        linked_slip: entry.linked_slip
           ? {
               id: entry.linked_slip.id,
               slip_type: entry.linked_slip.slip_type,
